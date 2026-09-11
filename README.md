@@ -11,7 +11,7 @@ Trang không có cơ sở dữ liệu hay màn hình quản trị. Mọi thay đ
 
 ## Chạy trên máy
 
-Yêu cầu Node.js 22.13 trở lên.
+Yêu cầu Node.js 22 (bản 22.13 trở lên).
 
 ```bash
 npm ci
@@ -53,7 +53,20 @@ solarDates: {
 
 Cách này tránh tự động chuyển đổi sai giữa các hệ lịch và cho phép cả nhà xác nhận ngày làm lễ trước khi xuất bản.
 
-## Xuất bản bằng GitHub Pages
+## Xuất bản bằng Vercel
+
+Tệp [`vercel.json`](vercel.json) cấu hình Vercel dùng Node.js 22, cài đúng phiên bản phụ thuộc từ `package-lock.json`, chạy `npm run build` và phục vụ trang tĩnh trong `dist/client`.
+
+Để xuất bản lần đầu:
+
+1. Trong Vercel, import repository GitHub `vquand/clan`.
+2. Giữ **Root Directory** là thư mục gốc của repository.
+3. Không cần đặt Build Command hoặc Output Directory thủ công; cấu hình đã nằm trong `vercel.json`.
+4. Chọn `main` làm **Production Branch** nếu Vercel chưa tự nhận diện.
+
+Sau khi repository được kết nối, mỗi commit mới trên `main` sẽ khởi tạo một production deployment; các nhánh và pull request khác tạo preview deployment.
+
+## Xuất bản dự phòng bằng GitHub Pages
 
 Workflow [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) kiểm tra, build và xuất bản trang tĩnh mỗi khi có commit mới trên `main`.
 
@@ -69,6 +82,6 @@ Nếu đổi tên repository, cập nhật `PAGES_BASE_PATH` trong workflow cho 
 2. Chỉnh `data/members.ts` hoặc `data/events.ts`.
 3. Chạy các lệnh kiểm tra.
 4. Commit và mở pull request để một người khác trong gia đình duyệt.
-5. Merge vào `main`; GitHub Pages tự xuất bản phiên bản mới.
+5. Merge vào `main`; Vercel và GitHub Pages tự xuất bản phiên bản mới sau khi repository đã được kết nối với cả hai dịch vụ.
 
 > Dữ liệu hiện có hoàn toàn là dữ liệu minh hoạ. Hãy thay thế trước khi chia sẻ trang rộng rãi, và chỉ công khai thông tin cá nhân khi các thành viên đồng ý.
