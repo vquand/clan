@@ -39,6 +39,15 @@ jobs:
           PAGES_BASE_PATH: /clan
         run: npm run build
 
+      - name: Normalize repository path in artifact
+        run: |
+          if [ -d dist/client/clan ]; then
+            cp -R dist/client/clan/. dist/client/
+            rm -rf dist/client/clan
+          fi
+          test -f dist/client/index.html
+          test -d dist/client/_next
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
