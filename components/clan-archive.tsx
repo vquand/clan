@@ -13,6 +13,7 @@ import {
   TreePine,
   Users,
 } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -26,8 +27,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { clanEvents } from '@/data/events';
-import { members } from '@/data/members';
 import type { ClanEvent, Member } from '@/data/types';
 import {
   buildCalendarDays,
@@ -37,28 +36,25 @@ import {
   getMember,
   getRelatives,
 } from '@/lib/clan';
+import {
+  DEFAULT_LOCALE,
+  getIntlLocale,
+  type Locale,
+  LOCALES,
+  translate,
+  weekdayLabels,
+} from '@/lib/i18n';
+import {
+  normalizeReadingSize,
+  READING_SIZE_STORAGE_KEY,
+  type ReadingSize,
+} from '@/lib/preferences';
 
 const tabs = [
-  { value: 'members', label: 'Thành viên', icon: Users },
-  { value: 'tree', label: 'Gia phả', icon: TreePine },
-  { value: 'calendar', label: 'Lịch họ', icon: CalendarDays },
+  { value: 'members', labelKey: 'tabMembers', icon: Users },
+  { value: 'tree', labelKey: 'tabTree', icon: TreePine },
+  { value: 'calendar', labelKey: 'tabCalendar', icon: CalendarDays },
 ] as const;
-
-const months = [
-  'Tháng Một',
-  'Tháng Hai',
-  'Tháng Ba',
-  'Tháng Tư',
-  'Tháng Năm',
-  'Tháng Sáu',
-  'Tháng Bảy',
-  'Tháng Tám',
-  'Tháng Chín',
-  'Tháng Mười',
-  'Tháng Mười Một',
-  'Tháng Mười Hai',
-];
-const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 function initials(name: string) {
   return name
@@ -68,9 +64,9 @@ function initials(name: string) {
     .join('');
 }
 
-function formatDate(date?: string) {
-  if (!date) return 'Chưa rõ';
-  return new Intl.DateTimeFormat('vi-VN', {
+function formatDate(date: string | undefined, locale: Locale) {
+  if (!date) return translate(locale, 'unknown');
+  return new Intl.DateTimeFormat(getIntlLocale(locale), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -96,9 +92,11 @@ function MemberAvatar({
 
 function MemberCard({
   member,
+  locale,
   onSelect,
 }: {
   member: Member;
+  locale: Locale;
   onSelect: (member: Member) => void;
 }) {
   return (
@@ -114,11 +112,16 @@ function MemberCard({
           <ChevronRight aria-hidden="true" />
         </span>
         <span className="member-card__meta">
-          Đời {member.generation} · {member.birthYear} · {member.branch}
+          {translate(locale, 'generation', {
+            generation: member.generation,
+          })}{' '}
+          · {member.birthYear} · {member.branch}
         </span>
         <span className="member-card__bottom">
           <span>
-            {member.residence ?? member.hometown ?? 'Chưa cập nhật nơi ở'}
+            {member.residence ??
+              member.hometown ??
+              translate(locale, 'unknownResidence')}
           </span>
           <span
             className={
@@ -127,7 +130,10 @@ function MemberCard({
                 : 'status'
             }
           >
-            {member.status === 'deceased' ? 'Đã mất' : 'Còn sống'}
+            {translate(
+              locale,
+              member.status === 'deceased' ? 'deceased' : 'living',
+            )}
           </span>
         </span>
       </span>
@@ -135,11 +141,19 @@ function MemberCard({
   );
 }
 
-function MembersView({ onSelect }: { onSelect: (member: Member) => void }) {
+function MembersView({
+  members,
+  locale,
+  onSelect,
+}: {
+  members: Member[];
+  locale: Locale;
+  onSelect: (member: Member) => void;
+}) {
   const [query, setQuery] = useState('');
   const [generation, setGeneration] = useState<number | 'all'>('all');
   const filteredMembers = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase('vi');
+    const normalized = query.trim().toLocaleLowerCase(getIntlLocale(locale));
     return members.filter((member) => {
       const matchesText = [
         member.fullName,
@@ -148,28 +162,38 @@ function MembersView({ onSelect }: { onSelect: (member: Member) => void }) {
         member.residence,
       ]
         .filter(Boolean)
-        .some((value) => value?.toLocaleLowerCase('vi').includes(normalized));
+        .some((value) =>
+          value?.toLocaleLowerCase(getIntlLocale(locale)).includes(normalized),
+        );
       return (
         matchesText &&
         (generation === 'all' || member.generation === generation)
       );
     });
-  }, [generation, query]);
+  }, [generation, locale, members, query]);
+
+  const generationCount = new Set(members.map((member) => member.generation))
+    .size;
 
   return (
     <section className="view-panel" aria-labelledby="members-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Danh sách dòng họ</p>
-          <h2 id="members-heading">{members.length} thành viên qua 3 thế hệ</h2>
+          <p className="eyebrow">{translate(locale, 'memberListEyebrow')}</p>
+          <h2 id="members-heading">
+            {translate(locale, 'memberCount', {
+              count: members.length,
+              generations: generationCount,
+            })}
+          </h2>
         </div>
-        <p>Chọn một người để xem ngày sinh, quan hệ và thông tin tưởng niệm.</p>
+        <p>{translate(locale, 'memberIntro')}</p>
       </div>
       <div className="member-toolbar">
         <div className="search-box">
           <Search aria-hidden="true" />
           <label className="sr-only" htmlFor="member-search">
-            Tìm thành viên
+            {translate(locale, 'searchLabel')}
           </label>
           <Input
             id="member-search"
@@ -177,10 +201,13 @@ function MembersView({ onSelect }: { onSelect: (member: Member) => void }) {
             value={query}
             onValueChange={setQuery}
             onInputCapture={(event) => setQuery(event.currentTarget.value)}
-            placeholder="Tìm theo tên, nơi ở, chi..."
+            placeholder={translate(locale, 'searchPlaceholder')}
           />
         </div>
-        <div className="generation-filter" aria-label="Lọc theo thế hệ">
+        <div
+          className="generation-filter"
+          aria-label={translate(locale, 'generationFilter')}
+        >
           {(['all', 1, 2, 3] as const).map((value) => (
             <Button
               key={value}
@@ -188,7 +215,9 @@ function MembersView({ onSelect }: { onSelect: (member: Member) => void }) {
               variant={generation === value ? 'default' : 'outline'}
               onClick={() => setGeneration(value)}
             >
-              {value === 'all' ? 'Tất cả' : `Đời ${value}`}
+              {value === 'all'
+                ? translate(locale, 'allGenerations')
+                : translate(locale, 'generation', { generation: value })}
             </Button>
           ))}
         </div>
@@ -196,14 +225,19 @@ function MembersView({ onSelect }: { onSelect: (member: Member) => void }) {
       {filteredMembers.length ? (
         <div className="member-grid">
           {filteredMembers.map((member) => (
-            <MemberCard key={member.id} member={member} onSelect={onSelect} />
+            <MemberCard
+              key={member.id}
+              member={member}
+              locale={locale}
+              onSelect={onSelect}
+            />
           ))}
         </div>
       ) : (
         <output className="empty-state">
           <Sprout aria-hidden="true" />
-          <h3>Không tìm thấy thành viên</h3>
-          <p>Thử tên khác hoặc chọn lại “Tất cả”.</p>
+          <h3>{translate(locale, 'noMemberTitle')}</h3>
+          <p>{translate(locale, 'noMemberBody')}</p>
         </output>
       )}
     </section>
@@ -212,10 +246,12 @@ function MembersView({ onSelect }: { onSelect: (member: Member) => void }) {
 
 function PersonPill({
   member,
+  locale,
   onSelect,
   spouse = false,
 }: {
   member?: Member;
+  locale: Locale;
   onSelect: (member: Member) => void;
   spouse?: boolean;
 }) {
@@ -231,7 +267,9 @@ function PersonPill({
         <strong>{member.fullName}</strong>
         <small>
           {member.birthYear} ·{' '}
-          {member.status === 'deceased' ? 'đã mất' : member.residence}
+          {member.status === 'deceased'
+            ? translate(locale, 'deceased')
+            : member.residence}
         </small>
       </span>
     </button>
@@ -239,22 +277,34 @@ function PersonPill({
 }
 
 function CoupleNode({
+  members,
   member,
+  locale,
   onSelect,
 }: {
+  members: Member[];
   member: Member;
+  locale: Locale;
   onSelect: (member: Member) => void;
 }) {
   const spouse = getMember(member.spouseIds[0] ?? '', members);
   return (
     <div className="couple-node">
-      <PersonPill member={member} onSelect={onSelect} />
+      <PersonPill member={member} locale={locale} onSelect={onSelect} />
       {spouse && (
         <>
-          <span className="union-mark" aria-label="vợ chồng">
+          <span
+            className="union-mark"
+            aria-label={translate(locale, 'spouseAria')}
+          >
             &amp;
           </span>
-          <PersonPill member={spouse} onSelect={onSelect} spouse />
+          <PersonPill
+            member={spouse}
+            locale={locale}
+            onSelect={onSelect}
+            spouse
+          />
         </>
       )}
     </div>
@@ -262,11 +312,15 @@ function CoupleNode({
 }
 
 function FamilyBranch({
+  members,
   member,
+  locale,
   onSelect,
   lineage = new Set<string>(),
 }: {
+  members: Member[];
   member: Member;
+  locale: Locale;
   onSelect: (member: Member) => void;
   lineage?: Set<string>;
 }) {
@@ -277,13 +331,20 @@ function FamilyBranch({
 
   return (
     <li>
-      <CoupleNode member={member} onSelect={onSelect} />
+      <CoupleNode
+        members={members}
+        member={member}
+        locale={locale}
+        onSelect={onSelect}
+      />
       {children.length > 0 && (
         <ul>
           {children.map((child) => (
             <FamilyBranch
               key={child.id}
+              members={members}
               member={child}
+              locale={locale}
               onSelect={onSelect}
               lineage={nextLineage}
             />
@@ -294,7 +355,15 @@ function FamilyBranch({
   );
 }
 
-function TreeView({ onSelect }: { onSelect: (member: Member) => void }) {
+function TreeView({
+  members,
+  locale,
+  onSelect,
+}: {
+  members: Member[];
+  locale: Locale;
+  onSelect: (member: Member) => void;
+}) {
   const treeScrollRef = useRef<HTMLElement>(null);
   const roots = members.filter((member, index) => {
     if (
@@ -334,49 +403,67 @@ function TreeView({ onSelect }: { onSelect: (member: Member) => void }) {
     <section className="view-panel tree-view" aria-labelledby="tree-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Sơ đồ phả hệ</p>
-          <h2 id="tree-heading">{generationCount} thế hệ trong phả hệ</h2>
+          <p className="eyebrow">{translate(locale, 'treeEyebrow')}</p>
+          <h2 id="tree-heading">
+            {translate(locale, 'treeCount', {
+              generations: generationCount,
+            })}
+          </h2>
         </div>
-        <p>
-          Chọn tên một người để mở hồ sơ. Vuốt ngang để xem đủ sơ đồ trên màn
-          hình nhỏ.
-        </p>
+        <p>{translate(locale, 'treeIntro')}</p>
       </div>
       <section
         className="tree-scroll"
-        aria-label="Cây gia phả"
+        aria-label={translate(locale, 'treeLabel')}
         ref={treeScrollRef}
       >
         <div className="family-tree">
           <ul className="tree-roots">
             {roots.map((root) => (
-              <FamilyBranch key={root.id} member={root} onSelect={onSelect} />
+              <FamilyBranch
+                key={root.id}
+                members={members}
+                member={root}
+                locale={locale}
+                onSelect={onSelect}
+              />
             ))}
           </ul>
         </div>
       </section>
-      <div className="tree-legend" aria-label="Chú giải">
+      <div
+        className="tree-legend"
+        aria-label={translate(locale, 'legendLabel')}
+      >
         <span>
-          <i className="legend-dot" /> Thành viên trong họ
+          <i className="legend-dot" /> {translate(locale, 'legendMember')}
         </span>
         <span>
-          <i className="legend-dot legend-dot--spouse" /> Dâu / rể
+          <i className="legend-dot legend-dot--spouse" />{' '}
+          {translate(locale, 'legendSpouse')}
         </span>
         <span>
-          <i className="legend-line" /> Quan hệ cha mẹ – con
+          <i className="legend-line" /> {translate(locale, 'legendParent')}
         </span>
       </div>
     </section>
   );
 }
 
-function eventTypeLabel(event: ClanEvent) {
-  if (event.type === 'death-anniversary') return 'Ngày giỗ';
-  if (event.type === 'clan-ceremony') return 'Lễ họ';
-  return 'Sum họp';
+function eventTypeLabel(event: ClanEvent, locale: Locale) {
+  if (event.type === 'death-anniversary')
+    return translate(locale, 'deathAnniversary');
+  if (event.type === 'clan-ceremony') return translate(locale, 'clanCeremony');
+  return translate(locale, 'gathering');
 }
 
-function CalendarView() {
+function CalendarView({
+  events,
+  locale,
+}: {
+  events: ClanEvent[];
+  locale: Locale;
+}) {
   const [visible, setVisible] = useState({ year: 2026, month: 8 });
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -386,7 +473,7 @@ function CalendarView() {
     return () => cancelAnimationFrame(frame);
   }, []);
   const days = buildCalendarDays(visible.year, visible.month);
-  const datedEvents = clanEvents
+  const datedEvents = events
     .map((event) => ({ event, date: getEventDate(event, visible.year) }))
     .filter((item): item is { event: ClanEvent; date: string } =>
       Boolean(item.date),
@@ -397,21 +484,23 @@ function CalendarView() {
       return { year: date.getFullYear(), month: date.getMonth() };
     });
   }
+  const monthTitle = new Intl.DateTimeFormat(getIntlLocale(locale), {
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(visible.year, visible.month, 1));
   return (
     <section className="view-panel" aria-labelledby="calendar-heading">
       <div className="section-heading calendar-heading">
         <div>
-          <p className="eyebrow">Ngày chung của gia đình</p>
-          <h2 id="calendar-heading">
-            {months[visible.month]} {visible.year}
-          </h2>
+          <p className="eyebrow">{translate(locale, 'familyDays')}</p>
+          <h2 id="calendar-heading">{monthTitle}</h2>
         </div>
         <div className="calendar-actions">
           <Button
             variant="outline"
             size="icon"
             onClick={() => moveMonth(-1)}
-            aria-label="Tháng trước"
+            aria-label={translate(locale, 'previousMonth')}
           >
             <ArrowLeft />
           </Button>
@@ -422,24 +511,21 @@ function CalendarView() {
               setVisible({ year: now.getFullYear(), month: now.getMonth() });
             }}
           >
-            Hôm nay
+            {translate(locale, 'today')}
           </Button>
           <Button
             variant="outline"
             size="icon"
             onClick={() => moveMonth(1)}
-            aria-label="Tháng sau"
+            aria-label={translate(locale, 'nextMonth')}
           >
             <ArrowRight />
           </Button>
         </div>
       </div>
       <div className="calendar-layout">
-        <div
-          className="calendar-grid"
-          aria-label={`${months[visible.month]} ${visible.year}`}
-        >
-          {weekdays.map((day) => (
+        <div className="calendar-grid" aria-label={monthTitle}>
+          {weekdayLabels[locale].map((day) => (
             <div className="weekday" key={day}>
               {day}
             </div>
@@ -474,27 +560,36 @@ function CalendarView() {
         </div>
         <aside
           className="event-list"
-          aria-label="Các ngày quan trọng trong năm"
+          aria-label={translate(locale, 'importantDatesLabel')}
         >
           <div>
-            <p className="eyebrow">Trong năm {visible.year}</p>
-            <h3>Ngày đáng nhớ</h3>
+            <p className="eyebrow">
+              {translate(locale, 'yearEyebrow', { year: visible.year })}
+            </p>
+            <h3>{translate(locale, 'memorableDays')}</h3>
           </div>
           {datedEvents.map(({ event, date }) => (
             <article className="event-card" key={event.id}>
               <div className="event-date">
                 <strong>{new Date(`${date}T00:00:00`).getDate()}</strong>
-                <span>thg {new Date(`${date}T00:00:00`).getMonth() + 1}</span>
+                <span>
+                  {translate(locale, 'monthShort', {
+                    month: new Date(`${date}T00:00:00`).getMonth() + 1,
+                  })}
+                </span>
               </div>
               <div>
-                <Badge variant="outline">{eventTypeLabel(event)}</Badge>
+                <Badge variant="outline">{eventTypeLabel(event, locale)}</Badge>
                 <h4>{event.title}</h4>
                 <p>
                   <MapPin aria-hidden="true" /> {event.location}
                 </p>
                 {event.calendar === 'lunar' && (
                   <small>
-                    {event.day}/{event.month} âm lịch · ngày dương đã đối chiếu
+                    {translate(locale, 'lunarVerified', {
+                      day: event.day,
+                      month: event.month,
+                    })}
                   </small>
                 )}
               </div>
@@ -502,7 +597,7 @@ function CalendarView() {
           ))}
           {!datedEvents.length && (
             <p className="event-empty">
-              Chưa có ngày dương đã đối chiếu cho các sự kiện âm lịch năm này.
+              {translate(locale, 'noVerifiedEvents')}
             </p>
           )}
         </aside>
@@ -513,9 +608,13 @@ function CalendarView() {
 
 function MemberDetail({
   member,
+  members,
+  locale,
   onOpenChange,
 }: {
   member: Member | null;
+  members: Member[];
+  locale: Locale;
   onOpenChange: (open: boolean) => void;
 }) {
   if (!member) return null;
@@ -527,12 +626,17 @@ function MemberDetail({
           <MemberAvatar member={member} />
           <div>
             <SheetDescription>
-              Đời {member.generation} · {member.branch}
+              {translate(locale, 'generation', {
+                generation: member.generation,
+              })}{' '}
+              · {member.branch}
             </SheetDescription>
             <SheetTitle>{member.fullName}</SheetTitle>
             {member.familiarName && (
               <p className="familiar-name">
-                Tên thường gọi: {member.familiarName}
+                {translate(locale, 'familiarName', {
+                  name: member.familiarName,
+                })}
               </p>
             )}
           </div>
@@ -542,7 +646,10 @@ function MemberDetail({
             <Badge
               variant={member.status === 'deceased' ? 'outline' : 'secondary'}
             >
-              {member.status === 'deceased' ? 'Đã mất' : 'Còn sống'}
+              {translate(
+                locale,
+                member.status === 'deceased' ? 'deceased' : 'living',
+              )}
             </Badge>
             {member.residence && (
               <span>
@@ -553,49 +660,53 @@ function MemberDetail({
           </div>
           <dl className="detail-list">
             <div>
-              <dt>Năm sinh</dt>
+              <dt>{translate(locale, 'birthYear')}</dt>
               <dd>{member.birthYear}</dd>
             </div>
             <div>
-              <dt>Ngày sinh</dt>
-              <dd>{formatDate(member.birthDate)}</dd>
+              <dt>{translate(locale, 'birthDate')}</dt>
+              <dd>{formatDate(member.birthDate, locale)}</dd>
             </div>
             {member.deathDate && (
               <div>
-                <dt>Ngày mất</dt>
-                <dd>{formatDate(member.deathDate)}</dd>
+                <dt>{translate(locale, 'deathDate')}</dt>
+                <dd>{formatDate(member.deathDate, locale)}</dd>
               </div>
             )}
             {member.deathAnniversaryLunar && (
               <div>
-                <dt>Ngày giỗ</dt>
+                <dt>{translate(locale, 'deathAnniversaryField')}</dt>
                 <dd>
-                  {member.deathAnniversaryLunar.day}/
-                  {member.deathAnniversaryLunar.month} âm lịch
+                  {translate(locale, 'lunarDate', {
+                    day: member.deathAnniversaryLunar.day,
+                    month: member.deathAnniversaryLunar.month,
+                  })}
                 </dd>
               </div>
             )}
             {member.hometown && (
               <div>
-                <dt>Quê quán</dt>
+                <dt>{translate(locale, 'hometown')}</dt>
                 <dd>{member.hometown}</dd>
               </div>
             )}
           </dl>
           {member.biography && (
             <div className="biography">
-              <p className="eyebrow">Ghi nhớ</p>
+              <p className="eyebrow">{translate(locale, 'biography')}</p>
               <p>{member.biography}</p>
             </div>
           )}
           <div className="relationships">
-            <p className="eyebrow">Quan hệ trong gia đình</p>
+            <p className="eyebrow">{translate(locale, 'relationships')}</p>
             {related.map((person) => (
               <div key={person.id}>
                 <MemberAvatar member={person} small />
                 <span>
                   <strong>{person.fullName}</strong>
-                  <small>{describeRelationship(member, person, members)}</small>
+                  <small>
+                    {describeRelationship(member, person, members, locale)}
+                  </small>
                 </span>
               </div>
             ))}
@@ -606,9 +717,17 @@ function MemberDetail({
   );
 }
 
-export function ClanArchive() {
+export function ClanArchive({
+  members,
+  events,
+}: {
+  members: Member[];
+  events: ClanEvent[];
+}) {
   const [activeTab, setActiveTab] = useState('members');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
+  const [readingSize, setReadingSize] = useState<ReadingSize>('standard');
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       const hash = window.location.hash.slice(1);
@@ -622,6 +741,20 @@ export function ClanArchive() {
       delete document.documentElement.dataset.appReady;
     };
   }, []);
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+  useEffect(() => {
+    const stored = normalizeReadingSize(
+      window.localStorage.getItem(READING_SIZE_STORAGE_KEY),
+    );
+    const frame = requestAnimationFrame(() => setReadingSize(stored));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.readingSize = readingSize;
+    window.localStorage.setItem(READING_SIZE_STORAGE_KEY, readingSize);
+  }, [readingSize]);
   function changeTab(value: string) {
     setActiveTab(value);
     window.history.replaceState(null, '', `#${value}`);
@@ -630,19 +763,70 @@ export function ClanArchive() {
     <main className="archive-shell">
       <header className="site-header">
         <div className="brand-mark">
-          <Flower2 aria-hidden="true" />
+          <Image
+            src="./clan-emblem.png"
+            alt=""
+            aria-hidden="true"
+            width={1024}
+            height={1024}
+            unoptimized
+          />
         </div>
         <div className="brand-copy">
-          <p>Dòng họ chúng ta</p>
-          <h1>Gia phả &amp; ngày sum họp</h1>
+          <p>{translate(locale, 'brandKicker')}</p>
+          <h1>{translate(locale, 'brandTitle')}</h1>
         </div>
-        <div className="header-note">
-          <GitCommitHorizontal aria-hidden="true" />
-          <span>
-            Dữ liệu được gìn giữ
-            <br />
-            qua từng lần cập nhật
-          </span>
+        <div className="header-tools">
+          <div className="header-note">
+            <GitCommitHorizontal aria-hidden="true" />
+            <span>{translate(locale, 'custodyNote')}</span>
+          </div>
+          <div className="preference-controls">
+            <fieldset className="language-control">
+              <legend className="control-label">
+                {translate(locale, 'languageLabel')}
+              </legend>
+              {LOCALES.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={
+                    value === 'vi'
+                      ? 'Tiếng Việt'
+                      : value === 'en'
+                        ? 'English'
+                        : 'Français'
+                  }
+                  aria-pressed={locale === value}
+                  onClick={() => setLocale(value)}
+                >
+                  {value.toUpperCase()}
+                </button>
+              ))}
+            </fieldset>
+            <fieldset className="reading-control">
+              <legend className="control-label">
+                {translate(locale, 'readingSizeLabel')}
+              </legend>
+              {(
+                [
+                  ['standard', 'A', 'readingStandard'],
+                  ['large', 'A+', 'readingLarge'],
+                  ['extra-large', 'A++', 'readingExtraLarge'],
+                ] as const
+              ).map(([value, shortLabel, labelKey]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={translate(locale, labelKey)}
+                  aria-pressed={readingSize === value}
+                  onClick={() => setReadingSize(value)}
+                >
+                  {shortLabel}
+                </button>
+              ))}
+            </fieldset>
+          </div>
         </div>
       </header>
       <Tabs
@@ -650,35 +834,45 @@ export function ClanArchive() {
         onValueChange={changeTab}
         className="archive-tabs"
       >
-        <TabsList className="main-nav" aria-label="Nội dung gia phả">
-          {tabs.map(({ value, label, icon: Icon }) => (
+        <TabsList
+          className="main-nav"
+          aria-label={translate(locale, 'navigationLabel')}
+        >
+          {tabs.map(({ value, labelKey, icon: Icon }) => (
             <TabsTrigger key={value} value={value}>
               <Icon aria-hidden="true" />
-              {label}
+              {translate(locale, labelKey)}
             </TabsTrigger>
           ))}
         </TabsList>
         <TabsContent value="members">
-          <MembersView onSelect={setSelectedMember} />
+          <MembersView
+            members={members}
+            locale={locale}
+            onSelect={setSelectedMember}
+          />
         </TabsContent>
         <TabsContent value="tree">
-          <TreeView onSelect={setSelectedMember} />
+          <TreeView
+            members={members}
+            locale={locale}
+            onSelect={setSelectedMember}
+          />
         </TabsContent>
         <TabsContent value="calendar">
-          <CalendarView />
+          <CalendarView events={events} locale={locale} />
         </TabsContent>
       </Tabs>
       <footer className="site-footer">
         <span>
-          <Flower2 aria-hidden="true" /> Gia phả dòng họ
+          <Flower2 aria-hidden="true" /> {translate(locale, 'footerBrand')}
         </span>
-        <p>
-          Dữ liệu hiện tại là minh hoạ. Chỉnh sửa trong <code>data/</code> rồi
-          commit để xuất bản.
-        </p>
+        <p>{translate(locale, 'footerNote')}</p>
       </footer>
       <MemberDetail
         member={selectedMember}
+        members={members}
+        locale={locale}
         onOpenChange={(open) => !open && setSelectedMember(null)}
       />
     </main>

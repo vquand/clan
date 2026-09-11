@@ -1,0 +1,28 @@
+{
+  "members": [
+    {
+      "id": "sample-founder",
+      "fullName": "Sample Founder",
+      "gender": "other",
+      "generation": 1,
+      "branch": "Main branch",
+      "birthYear": 1950,
+      "status": "living",
+      "parentIds": [],
+      "spouseIds": []
+    }
+  ],
+  "events": [
+    {
+      "id": "sample-gathering",
+      "title": "Annual family gathering",
+      "type": "gathering",
+      "calendar": "solar",
+      "day": 18,
+      "month": 4,
+      "recurrence": "annual",
+      "relatedMemberIds": ["sample-founder"],
+      "location": "Family home"
+    }
+  ]
+}

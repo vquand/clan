@@ -1,4 +1,5 @@
 import type { ClanEvent, Member } from '../data/types';
+import { type Locale, translate } from './i18n.ts';
 
 export function getMember(id: string, allMembers: Member[]) {
   return allMembers.find((member) => member.id === id);
@@ -8,6 +9,12 @@ export function getChildren(id: string, allMembers: Member[]) {
   return allMembers
     .filter((member) => member.parentIds.includes(id))
     .sort((a, b) => a.birthYear - b.birthYear);
+}
+
+export function getGenerations(allMembers: Member[]) {
+  return [...new Set(allMembers.map((member) => member.generation))].sort(
+    (a, b) => a - b,
+  );
 }
 
 export function getRelatives(member: Member, allMembers: Member[]) {
@@ -26,29 +33,44 @@ export function describeRelationship(
   selected: Member,
   related: Member,
   allMembers: Member[],
+  locale: Locale = 'vi',
 ) {
   if (selected.spouseIds.includes(related.id)) {
-    return related.gender === 'female' ? 'Vợ' : 'Chồng';
+    return translate(
+      locale,
+      related.gender === 'female' ? 'relationshipWife' : 'relationshipHusband',
+    );
   }
   if (selected.parentIds.includes(related.id)) {
-    return related.gender === 'female' ? 'Mẹ' : 'Cha';
+    return translate(
+      locale,
+      related.gender === 'female' ? 'relationshipMother' : 'relationshipFather',
+    );
   }
   if (related.parentIds.includes(selected.id)) {
-    return related.gender === 'female' ? 'Con gái' : 'Con trai';
+    return translate(
+      locale,
+      related.gender === 'female' ? 'relationshipDaughter' : 'relationshipSon',
+    );
   }
   const sharedParent = selected.parentIds.some((id) =>
     related.parentIds.includes(id),
   );
   if (sharedParent) {
-    return related.gender === 'female' ? 'Chị/em gái' : 'Anh/em trai';
+    return translate(
+      locale,
+      related.gender === 'female'
+        ? 'relationshipSister'
+        : 'relationshipBrother',
+    );
   }
   return allMembers.some(
     (member) =>
       member.parentIds.includes(selected.id) &&
       member.spouseIds.includes(related.id),
   )
-    ? 'Con dâu/rể'
-    : 'Họ hàng';
+    ? translate(locale, 'relationshipChildInLaw')
+    : translate(locale, 'relationshipRelative');
 }
 
 export function getEventDate(event: ClanEvent, year: number) {

@@ -62,3 +62,44 @@ test('member search, profile, tree, and calendar work without browser errors', a
   });
   expect(errors).toEqual([]);
 });
+
+test('language switching works and the reading size persists locally', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'vi');
+
+  const english = page.getByRole('button', { name: 'English' });
+  await english.click();
+  await expect(english).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.getByRole('tab', { name: 'Family tree' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Extra large text' }).click();
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-reading-size',
+    'extra-large',
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath('extra-large-text.png'),
+    fullPage: true,
+  });
+
+  await page.getByRole('button', { name: 'Français' }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+  await expect(page.getByRole('tab', { name: 'Calendrier' })).toBeVisible();
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'vi');
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-reading-size',
+    'extra-large',
+  );
+});

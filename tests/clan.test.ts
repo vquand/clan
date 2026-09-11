@@ -8,6 +8,7 @@ import {
   describeRelationship,
   getChildren,
   getEventDate,
+  getGenerations,
   getRelatives,
   validateClanData,
 } from '../lib/clan.ts';
@@ -20,6 +21,17 @@ void test('children are derived from parent references and sorted by birth year'
   assert.deepEqual(
     getChildren('an', members).map((member) => member.id),
     ['binh', 'chi', 'dung'],
+  );
+});
+
+void test('generation filters are derived from the supplied clan data', () => {
+  assert.deepEqual(getGenerations(members), [1, 2, 3]);
+  assert.deepEqual(
+    getGenerations([
+      { ...members[0], generation: 4 },
+      { ...members[1], generation: 1 },
+    ]),
+    [1, 4],
   );
 });
 
