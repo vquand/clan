@@ -75,7 +75,7 @@ npm run lint
 npm run build
 ```
 
-The database stores one `clan_data` row with `members` and `events` JSONB arrays. Re-running `db:seed` replaces that row, which makes updates explicit and keeps the frontend deployment independent from data changes.
+The database stores one JSONB object per row in separate `members` and `events` tables. Re-running `db:seed` replaces both tables in one transaction, which makes updates explicit and keeps the frontend deployment independent from data changes. The original `clan_data` row is retained as a migration backup; the API does not read it.
 
 ### Dataset shape
 

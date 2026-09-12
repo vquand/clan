@@ -49,18 +49,14 @@ function isClanData(value) {
 async function getClanData() {
   if (!sql) throw new Error('DATABASE_URL is not configured');
 
-  const rows = await sql`
-    SELECT members, events
-    FROM clan_data
-    WHERE id = 'default'
-    LIMIT 1
-  `;
-  const row = rows[0];
-  if (!row) return null;
+  const [memberRows, eventRows] = await Promise.all([
+    sql`SELECT data FROM members ORDER BY id`,
+    sql`SELECT data FROM events ORDER BY id`,
+  ]);
 
   const data = {
-    members: parseJsonb(row.members),
-    events: parseJsonb(row.events),
+    members: memberRows.map((row) => parseJsonb(row.data)),
+    events: eventRows.map((row) => parseJsonb(row.data)),
   };
   return isClanData(data) ? data : null;
 }

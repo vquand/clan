@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import { neon } from '@neondatabase/serverless';
@@ -11,11 +11,19 @@ if (!databaseUrl) {
   );
 }
 
-const migrationPath = fileURLToPath(
-  new URL('../db/migrations/001_create_clan_data.sql', import.meta.url),
-);
-const migration = await readFile(migrationPath, 'utf8');
 const sql = neon(databaseUrl);
+const migrationsDirectory = fileURLToPath(
+  new URL('../db/migrations', import.meta.url),
+);
+const migrationFiles = (await readdir(migrationsDirectory))
+  .filter((fileName) => /^\d+_.+\.sql$/.test(fileName))
+  .sort();
 
-await sql.query(migration);
-console.log('Applied database migration 001_create_clan_data');
+for (const fileName of migrationFiles) {
+  const migration = await readFile(
+    `${migrationsDirectory}/${fileName}`,
+    'utf8',
+  );
+  await sql.query(migration);
+  console.log(`Applied database migration ${fileName}`);
+}

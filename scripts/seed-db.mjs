@@ -35,19 +35,21 @@ if (
 }
 
 const sql = neon(databaseUrl);
-await sql`
-  INSERT INTO clan_data (id, members, events)
-  VALUES (
-    'default',
-    ${JSON.stringify(data.members)}::jsonb,
-    ${JSON.stringify(data.events)}::jsonb
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    members = EXCLUDED.members,
-    events = EXCLUDED.events,
-    updated_at = NOW()
-`;
+await sql.transaction([
+  sql`DELETE FROM members`,
+  sql`DELETE FROM events`,
+  sql`
+    INSERT INTO members (id, data)
+    SELECT member->>'id', member
+    FROM jsonb_array_elements(${JSON.stringify(data.members)}::jsonb) AS member
+  `,
+  sql`
+    INSERT INTO events (id, data)
+    SELECT event->>'id', event
+    FROM jsonb_array_elements(${JSON.stringify(data.events)}::jsonb) AS event
+  `,
+]);
 
 console.log(
-  `Seeded clan_data.default with ${data.members.length} members and ${data.events.length} events`,
+  `Seeded ${data.members.length} member rows and ${data.events.length} event rows`,
 );
