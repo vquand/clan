@@ -1,0 +1,60 @@
+import type { ClanEvent, Member } from '../data/types';
+
+export interface ClanData {
+  members: Member[];
+  events: ClanEvent[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === 'string')
+  );
+}
+
+export function isMember(value: unknown): value is Member {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === 'string' &&
+    typeof value.fullName === 'string' &&
+    ['male', 'female', 'other'].includes(String(value.gender)) &&
+    Number.isInteger(value.generation) &&
+    (value.branch === undefined || typeof value.branch === 'string') &&
+    (value.birthYear === undefined || Number.isInteger(value.birthYear)) &&
+    (value.status === undefined ||
+      (typeof value.status === 'string' &&
+        ['living', 'deceased'].includes(value.status))) &&
+    isStringArray(value.parentIds) &&
+    isStringArray(value.spouseIds)
+  );
+}
+
+export function isClanEvent(value: unknown): value is ClanEvent {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === 'string' &&
+    typeof value.title === 'string' &&
+    ['death-anniversary', 'clan-ceremony', 'gathering'].includes(
+      String(value.type),
+    ) &&
+    ['solar', 'lunar'].includes(String(value.calendar)) &&
+    Number.isInteger(value.day) &&
+    Number.isInteger(value.month) &&
+    ['annual', 'once'].includes(String(value.recurrence)) &&
+    isStringArray(value.relatedMemberIds) &&
+    typeof value.location === 'string'
+  );
+}
+
+export function isClanData(value: unknown): value is ClanData {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.members) &&
+    value.members.every(isMember) &&
+    Array.isArray(value.events) &&
+    value.events.every(isClanEvent)
+  );
+}

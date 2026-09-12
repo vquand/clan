@@ -6,7 +6,7 @@ export interface Member {
   familiarName?: string;
   gender: 'male' | 'female' | 'other';
   generation: number;
-  branch: string;
+  branch?: string;
   birthYear?: number;
   birthDate?: string;
   status?: LifeStatus;

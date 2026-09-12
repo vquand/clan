@@ -75,7 +75,7 @@ npm run lint
 npm run build
 ```
 
-The database stores one JSONB object per row in separate `members` and `events` tables. Re-running `db:seed` replaces both tables in one transaction, which makes updates explicit and keeps the frontend deployment independent from data changes. The original `clan_data` row is retained as a migration backup; the API does not read it.
+The database uses relational `members` and `events` tables with generated UUID primary keys. Parent, spouse, event-member, and yearly solar-date associations live in dedicated relationship tables. Generation numbers are derived from those relationships rather than stored, and branch labels are optional display metadata rather than identifiers. Re-running `db:seed` replaces the relational dataset in one transaction. The original JSON tables are retained under `*_legacy_json` names as a migration backup and are not read by the API.
 
 ### Dataset shape
 
@@ -164,9 +164,9 @@ DATABASE_URL="postgresql://..." CLAN_DATA_FILE="/private/path/clan-data.json" np
 
 ### Vercel frontend
 
-[`vercel.json`](vercel.json) selects the `Other` framework preset, runs `npm ci` and `npm run build`, and publishes `dist/client`. Connect the repository to Vercel with `main` as the Production Branch. Every push to `main` creates a production deployment.
+[`vercel.mjs`](vercel.mjs) selects the `Other` framework preset, runs `npm ci` and `npm run build`, publishes `dist/client`, and proxies `/api/*` to Render. The browser therefore uses a same-origin `/api/clan` request and does not depend on CORS for normal frontend traffic. Connect the repository to Vercel with `main` as the Production Branch. Every push to `main` creates a production deployment.
 
-Set `NEXT_PUBLIC_API_URL` in Vercel's **Production** environment to the Render service URL, for example `https://clan-api.onrender.com`. Set it in **Preview** as well if previews should use the backend. Redeploy after changing environment variables; Vercel applies them to new deployments.
+Set `API_URL` in Vercel's **Production** environment to the Render service origin, for example `https://clan-api.onrender.com`. Set it in **Preview** as well if previews should use the backend. `NEXT_PUBLIC_API_URL` remains accepted while migrating existing projects, but the URL no longer needs to be exposed to browser code. Redeploy after changing environment variables; Vercel applies them to new deployments.
 
 ## Development commands
 

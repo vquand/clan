@@ -2,6 +2,8 @@ import { createServer } from 'node:http';
 
 import { neon } from '@neondatabase/serverless';
 
+import { assembleClanData } from './clan-data.mjs';
+
 const port = Number(process.env.PORT ?? 10000);
 const databaseUrl = process.env.DATABASE_URL?.trim();
 const sql = databaseUrl ? neon(databaseUrl) : null;
@@ -33,10 +35,6 @@ function sendJson(response, status, payload, requestOrigin) {
   response.end(JSON.stringify(payload));
 }
 
-function parseJsonb(value) {
-  return typeof value === 'string' ? JSON.parse(value) : value;
-}
-
 function isClanData(value) {
   return (
     value &&
@@ -49,15 +47,59 @@ function isClanData(value) {
 async function getClanData() {
   if (!sql) throw new Error('DATABASE_URL is not configured');
 
-  const [memberRows, eventRows] = await Promise.all([
-    sql`SELECT data FROM members ORDER BY id`,
-    sql`SELECT data FROM events ORDER BY id`,
+  const [
+    memberRows,
+    parentRows,
+    spouseRows,
+    eventRows,
+    eventMemberRows,
+    eventSolarDateRows,
+  ] = await Promise.all([
+    sql`
+      SELECT
+        id, full_name, familiar_name, gender, birth_year, birth_date,
+        life_status, death_date, death_anniversary_lunar_day,
+        death_anniversary_lunar_month, hometown, residence, biography
+      FROM members
+      ORDER BY full_name, id
+    `,
+    sql`
+      SELECT child_id, parent_id
+      FROM member_parents
+      ORDER BY child_id, parent_order, parent_id
+    `,
+    sql`
+      SELECT member_a_id, member_b_id
+      FROM member_spouses
+      ORDER BY member_a_id, member_b_id
+    `,
+    sql`
+      SELECT
+        id, title, type, calendar, day, month, recurrence,
+        event_year, location, description
+      FROM events
+      ORDER BY month, day, title, id
+    `,
+    sql`
+      SELECT event_id, member_id
+      FROM event_members
+      ORDER BY event_id, member_id
+    `,
+    sql`
+      SELECT event_id, year, solar_date
+      FROM event_solar_dates
+      ORDER BY event_id, year
+    `,
   ]);
 
-  const data = {
-    members: memberRows.map((row) => parseJsonb(row.data)),
-    events: eventRows.map((row) => parseJsonb(row.data)),
-  };
+  const data = assembleClanData({
+    memberRows,
+    parentRows,
+    spouseRows,
+    eventRows,
+    eventMemberRows,
+    eventSolarDateRows,
+  });
   return isClanData(data) ? data : null;
 }
 

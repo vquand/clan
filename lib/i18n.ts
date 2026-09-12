@@ -65,7 +65,8 @@ const vi = {
   biography: 'Ghi nhớ',
   relationships: 'Quan hệ trong gia đình',
   footerBrand: 'Gia phả dòng họ',
-  footerNote:
+  footerNote: 'Dữ liệu được tải trực tiếp từ cơ sở dữ liệu gia phả.',
+  footerSampleNote:
     'Dữ liệu hiện tại là minh hoạ. Cấu hình dữ liệu riêng khi build để xuất bản.',
   relationshipWife: 'Vợ',
   relationshipHusband: 'Chồng',
@@ -143,7 +144,8 @@ const en: Record<MessageKey, string> = {
   biography: 'Remembered',
   relationships: 'Family relationships',
   footerBrand: 'Clan family archive',
-  footerNote:
+  footerNote: 'Data is loaded directly from the family archive database.',
+  footerSampleNote:
     'The current dataset is fictional. Configure private build data before publishing your own archive.',
   relationshipWife: 'Wife',
   relationshipHusband: 'Husband',
@@ -220,6 +222,8 @@ const fr: Record<MessageKey, string> = {
   relationships: 'Liens familiaux',
   footerBrand: 'Archives familiales du clan',
   footerNote:
+    'Les données sont chargées directement depuis la base des archives familiales.',
+  footerSampleNote:
     'Les données actuelles sont fictives. Configurez les données privées à la compilation avant de publier vos archives.',
   relationshipWife: 'Épouse',
   relationshipHusband: 'Époux',

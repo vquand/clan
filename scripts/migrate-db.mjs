@@ -12,6 +12,13 @@ if (!databaseUrl) {
 }
 
 const sql = neon(databaseUrl);
+await sql`
+  CREATE TABLE IF NOT EXISTS schema_migrations (
+    file_name TEXT PRIMARY KEY,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )
+`;
+
 const migrationsDirectory = fileURLToPath(
   new URL('../db/migrations', import.meta.url),
 );
@@ -20,10 +27,27 @@ const migrationFiles = (await readdir(migrationsDirectory))
   .sort();
 
 for (const fileName of migrationFiles) {
+  const appliedRows = await sql`
+    SELECT 1
+    FROM schema_migrations
+    WHERE file_name = ${fileName}
+  `;
+  if (appliedRows.length > 0) {
+    console.log(`Skipped database migration ${fileName}`);
+    continue;
+  }
+
   const migration = await readFile(
     `${migrationsDirectory}/${fileName}`,
     'utf8',
   );
-  await sql.query(migration);
+  await sql.transaction((transaction) => [
+    transaction.query(migration),
+    transaction`
+      INSERT INTO schema_migrations (file_name)
+      VALUES (${fileName})
+      ON CONFLICT (file_name) DO NOTHING
+    `,
+  ]);
   console.log(`Applied database migration ${fileName}`);
 }

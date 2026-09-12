@@ -1,8 +1,18 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+import { clanEvents } from '../../data/events';
+import { members } from '../../data/members';
+
+async function serveSampleData(page: Page) {
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({ json: { members, events: clanEvents } });
+  });
+}
 
 test('member search, profile, tree, and calendar work without browser errors', async ({
   page,
 }, testInfo) => {
+  await serveSampleData(page);
   const errors: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
@@ -66,6 +76,7 @@ test('member search, profile, tree, and calendar work without browser errors', a
 test('language switching works and the reading size persists locally', async ({
   page,
 }, testInfo) => {
+  await serveSampleData(page);
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
   await expect(page.locator('html')).toHaveAttribute('lang', 'vi');
@@ -102,4 +113,62 @@ test('language switching works and the reading size persists locally', async ({
     'data-reading-size',
     'extra-large',
   );
+});
+
+test('uses API records without rendering the bundled sample first', async ({
+  page,
+}) => {
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({
+      json: {
+        members: [
+          {
+            id: '00000000-0000-4000-8000-000000000001',
+            fullName: 'Database Member',
+            gender: 'other',
+            generation: 0,
+            parentIds: [],
+            spouseIds: [],
+          },
+        ],
+        events: [],
+      },
+    });
+  });
+
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: '1 thành viên qua 1 thế hệ' }),
+  ).toBeVisible();
+  await expect(page.locator('.member-card')).toHaveCount(1);
+  await expect(page.getByText('Database Member')).toBeVisible();
+  await expect(page.getByText('Nguyễn Văn An')).toHaveCount(0);
+  await expect(
+    page.getByText('Dữ liệu được tải trực tiếp từ cơ sở dữ liệu gia phả.'),
+  ).toBeVisible();
+});
+
+test('shows a retryable error instead of mock members when the API fails', async ({
+  page,
+}) => {
+  let requestCount = 0;
+  await page.route('**/api/clan', async (route) => {
+    requestCount += 1;
+    if (requestCount === 1) {
+      await route.fulfill({ status: 503, body: 'Unavailable' });
+      return;
+    }
+    await route.fulfill({ json: { members, events: clanEvents } });
+  });
+
+  await page.goto('/');
+  await expect(
+    page.getByRole('alert').getByText('Không thể tải dữ liệu gia phả'),
+  ).toBeVisible();
+  await expect(page.locator('.member-card')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Thử lại' }).click();
+  await expect(
+    page.getByRole('heading', { name: '10 thành viên qua 3 thế hệ' }),
+  ).toBeVisible();
 });

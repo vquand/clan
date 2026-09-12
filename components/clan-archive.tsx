@@ -116,7 +116,8 @@ function MemberCard({
           {translate(locale, 'generation', {
             generation: member.generation,
           })}{' '}
-          · {member.birthYear ?? translate(locale, 'unknown')} · {member.branch}
+          · {member.birthYear ?? translate(locale, 'unknown')}
+          {member.branch ? ` · ${member.branch}` : ''}
         </span>
         <span className="member-card__bottom">
           <span>
@@ -635,8 +636,8 @@ function MemberDetail({
             <SheetDescription>
               {translate(locale, 'generation', {
                 generation: member.generation,
-              })}{' '}
-              · {member.branch}
+              })}
+              {member.branch ? ` · ${member.branch}` : ''}
             </SheetDescription>
             <SheetTitle>{member.fullName}</SheetTitle>
             {member.familiarName && (
@@ -731,9 +732,11 @@ function MemberDetail({
 export function ClanArchive({
   members,
   events,
+  isSampleData = false,
 }: {
   members: Member[];
   events: ClanEvent[];
+  isSampleData?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState('members');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -878,7 +881,9 @@ export function ClanArchive({
         <span>
           <Flower2 aria-hidden="true" /> {translate(locale, 'footerBrand')}
         </span>
-        <p>{translate(locale, 'footerNote')}</p>
+        <p>
+          {translate(locale, isSampleData ? 'footerSampleNote' : 'footerNote')}
+        </p>
       </footer>
       <MemberDetail
         member={selectedMember}
