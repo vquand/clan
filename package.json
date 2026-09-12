@@ -8,6 +8,9 @@
   "scripts": {
     "dev": "vinext dev",
     "build": "vinext build",
+    "start:api": "node server/index.mjs",
+    "db:migrate": "node scripts/migrate-db.mjs",
+    "db:seed": "node scripts/seed-db.mjs",
     "lint": "oxlint",
     "test": "node --test tests/*.test.ts",
     "test:browser": "playwright test",
@@ -16,6 +19,7 @@
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
+    "@neondatabase/serverless": "^1.1.0",
     "@shadcn/react": "0.3.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: clan-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run db:migrate && npm run start:api
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

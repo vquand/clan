@@ -1,7 +1,12 @@
-import { loadClanData } from '../lib/clan-data.ts';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { loadClanData, resolveClanData } from '../lib/clan-data.ts';
 import { validateClanData } from '../lib/clan.ts';
 
-const { members, events } = loadClanData();
+const { members, events } = process.env.CLAN_DATA_FILE
+  ? resolveClanData(readFileSync(resolve(process.env.CLAN_DATA_FILE), 'utf8'))
+  : loadClanData();
 const errors = validateClanData(members, events);
 
 if (errors.length) {

@@ -2,7 +2,7 @@
 
 A mobile-first, open-source family archive for publishing a member directory, relationship profiles, a family tree, and important clan dates. The interface defaults to Vietnamese and can be switched to English or French.
 
-The repository contains only fictional sample records. A personal deployment can inject its own dataset during the build without committing that information to the public source tree.
+The repository contains only fictional sample records. Production data lives in Neon and is served by the Render API; the Vercel frontend never needs a database credential.
 
 ## Features
 
@@ -13,8 +13,9 @@ The repository contains only fictional sample records. A personal deployment can
 - Vietnamese (`vi`) by default, plus English (`en`) and French (`fr`);
 - three reading sizes, persisted in the visitor's local storage;
 - mobile-first layout with touch-friendly controls;
-- static output suitable for Vercel and GitHub Pages;
-- validation for IDs, relationships, cycles, dates, and private build data.
+- static frontend output deployed on Vercel;
+- a read-only Render API backed by Neon Postgres;
+- validation for IDs, relationships, cycles, dates, and private seed data.
 
 ## Privacy model
 
@@ -22,13 +23,15 @@ This project separates **public application code** from **deployment-specific cl
 
 ```text
 Public GitHub repository ── fictional samples + application code
-                                      │
-Vercel build environment ── CLAN_DATA_JSON with your clan records
-                                      │
-Static production site ───── records visible to every site visitor
+             │
+             ├── Vercel frontend ── NEXT_PUBLIC_API_URL only
+             │                            │
+             └── Render API ─────────────┘
+                         │
+                    Neon Postgres
 ```
 
-`CLAN_DATA_JSON` is read only while the static site is built. Its value is not committed to Git, and Vercel stores environment variables outside the repository.
+The browser-visible `NEXT_PUBLIC_API_URL` contains no secret. `DATABASE_URL` stays on Render, and `CLAN_DATA_JSON`/`CLAN_DATA_FILE` are used only when seeding Neon. Do not put either of those values in Vercel.
 
 However, this application intentionally has **no login system**. Any record rendered on the deployed site is delivered to the visitor's browser and must be treated as public. Environment variables prevent source-code disclosure; they are not access control. Publish only information that the affected family members have agreed to share. Do not include identity numbers, private addresses, phone numbers, medical information, or other sensitive records.
 
@@ -43,15 +46,27 @@ npm ci
 npm run dev
 ```
 
-Open the local address printed by Vinext. With no environment override, the application uses the fictional records in [`data/members.ts`](data/members.ts) and [`data/events.ts`](data/events.ts).
+Open the local address printed by Vinext. With no `NEXT_PUBLIC_API_URL`, the frontend uses the fictional records in [`data/members.ts`](data/members.ts) and [`data/events.ts`](data/events.ts).
+
+To run the API locally, set `DATABASE_URL` to a Neon connection string, run the migration and seed it, then start the service:
+
+```bash
+DATABASE_URL="postgresql://..." npm run db:migrate
+DATABASE_URL="postgresql://..." CLAN_DATA_FILE="/private/path/clan-data.json" npm run validate:data
+DATABASE_URL="postgresql://..." CLAN_DATA_FILE="/private/path/clan-data.json" npm run db:seed
+DATABASE_URL="postgresql://..." CORS_ORIGINS="http://localhost:3000" npm run start:api
+```
+
+Set `NEXT_PUBLIC_API_URL=http://localhost:10000` in the frontend environment when you want local pages to load the Neon-backed API.
 
 ## Use clan data without committing it
 
 1. Copy [`examples/clan-data.example.json`](examples/clan-data.example.json) somewhere outside the public repository.
 2. Replace the fictional records while keeping the documented shape.
-3. Minify the JSON and store it as `CLAN_DATA_JSON` in a local `.env.local` file or in Vercel's Environment Variables settings.
-4. Never commit `.env.local`; it is ignored by Git.
-5. Validate and build before publishing:
+3. Validate the private file with `CLAN_DATA_FILE=/private/path/clan-data.json npm run validate:data`.
+4. Seed Neon with `DATABASE_URL="postgresql://..." CLAN_DATA_FILE=/private/path/clan-data.json npm run db:seed`.
+5. Never commit the private JSON file or a `.env.local` file; both are ignored by Git.
+6. Validate and build before publishing:
 
 ```bash
 npm run validate:data
@@ -60,9 +75,7 @@ npm run lint
 npm run build
 ```
 
-For Vercel, add `CLAN_DATA_JSON` to the **Production** environment and redeploy. Environment-variable changes apply only to new deployments. The loader accepts up to 60 KB so the complete Vercel environment remains below its 64 KB deployment limit. For a larger archive, use a dedicated data service rather than expanding the environment variable.
-
-For private version history, keep the real JSON file in a separate private repository. The first version can be copied into Vercel manually; a later private CI workflow can update the environment and trigger redeployment without exposing the records in this repository.
+The database stores one `clan_data` row with `members` and `events` JSONB arrays. Re-running `db:seed` replaces that row, which makes updates explicit and keeps the frontend deployment independent from data changes.
 
 ### Dataset shape
 
@@ -127,26 +140,43 @@ Visitors can choose standard, large, or extra-large text. The setting changes th
 
 ## Deployment
 
-### Vercel
+### Neon
+
+Create a Neon project and copy its pooled Postgres connection string. The Render service reads it from the `DATABASE_URL` environment variable. Do not expose that value to the browser or commit it.
+
+### Render backend
+
+[`render.yaml`](render.yaml) defines the Node web service. Create a Render Blueprint from this repository, then set:
+
+- `DATABASE_URL`: the Neon connection string;
+- `CORS_ORIGINS`: the exact Vercel production URL, plus any preview URLs you need.
+
+Render runs `db:migrate` before starting the API and exposes:
+
+- `GET /health` for the Render health check;
+- `GET /api/clan` for the Vercel frontend.
+
+Seed the database once from a machine that can access the private dataset:
+
+```bash
+DATABASE_URL="postgresql://..." CLAN_DATA_FILE="/private/path/clan-data.json" npm run db:seed
+```
+
+### Vercel frontend
 
 [`vercel.json`](vercel.json) selects the `Other` framework preset, runs `npm ci` and `npm run build`, and publishes `dist/client`. Connect the repository to Vercel with `main` as the Production Branch. Every push to `main` creates a production deployment.
 
-Set `CLAN_DATA_JSON` only in the environments where real records should appear. Preview deployments can omit it and safely use fictional samples.
-
-### GitHub Pages
-
-The workflow in [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) validates, audits, builds, and publishes the fictional-data version from `main` to:
-
-<https://vquand.github.io/clan/>
-
-If the repository name changes, update `PAGES_BASE_PATH` in the workflow.
+Set `NEXT_PUBLIC_API_URL` in Vercel's **Production** environment to the Render service URL, for example `https://clan-api.onrender.com`. Set it in **Preview** as well if previews should use the backend. Redeploy after changing environment variables; Vercel applies them to new deployments.
 
 ## Development commands
 
 ```bash
 npm test                # unit tests
 npm run test:browser    # desktop and mobile browser tests
-npm run validate:data   # validate sample or CLAN_DATA_JSON records
+npm run validate:data   # validate sample, CLAN_DATA_JSON, or CLAN_DATA_FILE records
+npm run db:migrate      # apply the Neon schema (DATABASE_URL required)
+npm run db:seed         # seed Neon (DATABASE_URL plus optional CLAN_DATA_FILE)
+npm run start:api       # start the Render-compatible API locally
 npm run lint            # source linting
 npx tsc --noEmit        # type checking
 npm run format -- --check
