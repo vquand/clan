@@ -8,13 +8,26 @@ export function getMember(id: string, allMembers: Member[]) {
 export function getChildren(id: string, allMembers: Member[]) {
   return allMembers
     .filter((member) => member.parentIds.includes(id))
-    .sort((a, b) => a.birthYear - b.birthYear);
+    .sort((a, b) => {
+      if (a.birthYear === undefined && b.birthYear === undefined) {
+        return a.fullName.localeCompare(b.fullName);
+      }
+      if (a.birthYear === undefined) return 1;
+      if (b.birthYear === undefined) return -1;
+      return a.birthYear - b.birthYear;
+    });
 }
 
 export function getGenerations(allMembers: Member[]) {
   return [...new Set(allMembers.map((member) => member.generation))].sort(
     (a, b) => a - b,
   );
+}
+
+export function getGenerationFilters(
+  allMembers: Member[],
+): Array<number | 'all'> {
+  return ['all', ...getGenerations(allMembers)];
 }
 
 export function getRelatives(member: Member, allMembers: Member[]) {

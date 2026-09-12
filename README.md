@@ -81,7 +81,7 @@ The database stores one `clan_data` row with `members` and `events` JSONB arrays
 
 The root JSON object contains `members` and `events` arrays. The complete fictional example is in [`examples/clan-data.example.json`](examples/clan-data.example.json).
 
-Required member fields:
+Required member fields (birth year and life status are optional when unknown):
 
 ```json
 {

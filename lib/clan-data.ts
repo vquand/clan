@@ -28,8 +28,10 @@ function isMember(value: unknown): value is Member {
     ['male', 'female', 'other'].includes(String(value.gender)) &&
     Number.isInteger(value.generation) &&
     typeof value.branch === 'string' &&
-    Number.isInteger(value.birthYear) &&
-    ['living', 'deceased'].includes(String(value.status)) &&
+    (value.birthYear === undefined || Number.isInteger(value.birthYear)) &&
+    (value.status === undefined ||
+      (typeof value.status === 'string' &&
+        ['living', 'deceased'].includes(value.status))) &&
     isStringArray(value.parentIds) &&
     isStringArray(value.spouseIds)
   );

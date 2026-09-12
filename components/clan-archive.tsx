@@ -33,6 +33,7 @@ import {
   describeRelationship,
   getChildren,
   getEventDate,
+  getGenerationFilters,
   getMember,
   getRelatives,
 } from '@/lib/clan';
@@ -115,7 +116,7 @@ function MemberCard({
           {translate(locale, 'generation', {
             generation: member.generation,
           })}{' '}
-          · {member.birthYear} · {member.branch}
+          · {member.birthYear ?? translate(locale, 'unknown')} · {member.branch}
         </span>
         <span className="member-card__bottom">
           <span>
@@ -132,7 +133,11 @@ function MemberCard({
           >
             {translate(
               locale,
-              member.status === 'deceased' ? 'deceased' : 'living',
+              member.status === 'deceased'
+                ? 'deceased'
+                : member.status === 'living'
+                  ? 'living'
+                  : 'unknown',
             )}
           </span>
         </span>
@@ -208,7 +213,7 @@ function MembersView({
           className="generation-filter"
           aria-label={translate(locale, 'generationFilter')}
         >
-          {(['all', 1, 2, 3] as const).map((value) => (
+          {getGenerationFilters(members).map((value) => (
             <Button
               key={value}
               type="button"
@@ -266,10 +271,12 @@ function PersonPill({
       <span>
         <strong>{member.fullName}</strong>
         <small>
-          {member.birthYear} ·{' '}
+          {member.birthYear ?? translate(locale, 'unknown')} ·{' '}
           {member.status === 'deceased'
             ? translate(locale, 'deceased')
-            : member.residence}
+            : member.status === 'living'
+              ? (member.residence ?? translate(locale, 'unknownResidence'))
+              : translate(locale, 'unknown')}
         </small>
       </span>
     </button>
@@ -644,11 +651,15 @@ function MemberDetail({
         <div className="member-sheet__content">
           <div className="detail-status">
             <Badge
-              variant={member.status === 'deceased' ? 'outline' : 'secondary'}
+              variant={member.status === 'living' ? 'secondary' : 'outline'}
             >
               {translate(
                 locale,
-                member.status === 'deceased' ? 'deceased' : 'living',
+                member.status === 'deceased'
+                  ? 'deceased'
+                  : member.status === 'living'
+                    ? 'living'
+                    : 'unknown',
               )}
             </Badge>
             {member.residence && (
@@ -661,7 +672,7 @@ function MemberDetail({
           <dl className="detail-list">
             <div>
               <dt>{translate(locale, 'birthYear')}</dt>
-              <dd>{member.birthYear}</dd>
+              <dd>{member.birthYear ?? translate(locale, 'unknown')}</dd>
             </div>
             <div>
               <dt>{translate(locale, 'birthDate')}</dt>

@@ -8,6 +8,7 @@ import {
   describeRelationship,
   getChildren,
   getEventDate,
+  getGenerationFilters,
   getGenerations,
   getRelatives,
   validateClanData,
@@ -32,6 +33,16 @@ void test('generation filters are derived from the supplied clan data', () => {
       { ...members[1], generation: 1 },
     ]),
     [1, 4],
+  );
+});
+
+void test('generation filters include level zero and future generations', () => {
+  assert.deepEqual(
+    getGenerationFilters([
+      { ...members[0], generation: 0 },
+      { ...members[1], generation: 5 },
+    ]),
+    ['all', 0, 5],
   );
 });
 

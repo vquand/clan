@@ -7,9 +7,9 @@ export interface Member {
   gender: 'male' | 'female' | 'other';
   generation: number;
   branch: string;
-  birthYear: number;
+  birthYear?: number;
   birthDate?: string;
-  status: LifeStatus;
+  status?: LifeStatus;
   deathDate?: string;
   deathAnniversaryLunar?: { day: number; month: number };
   parentIds: string[];

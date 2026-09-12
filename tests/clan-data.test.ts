@@ -18,8 +18,6 @@ void test('accepts a valid clan dataset supplied at build time', () => {
         gender: 'other',
         generation: 1,
         branch: 'Main branch',
-        birthYear: 1950,
-        status: 'living',
         parentIds: [],
         spouseIds: [],
       },
