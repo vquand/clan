@@ -27,10 +27,16 @@ test('member search, profile, tree, and calendar work without browser errors', a
   await expect(page.locator('.member-card')).toHaveCount(10);
   await expect(
     page.getByRole('button', { name: /Nguyễn Văn An/ }).first(),
-  ).toHaveClass(/member-card--lineage.*member-card--male/);
+  ).toHaveClass(/member-card--male/);
   await expect(
     page.getByRole('button', { name: /Trần Thị Mai/ }).first(),
-  ).toHaveClass(/member-card--marriage.*member-card--female/);
+  ).toHaveClass(/member-card--female/);
+  await expect(
+    page.getByRole('button', { name: /Nguyễn Văn An/ }).first(),
+  ).not.toHaveClass(/member-card--(lineage|marriage)/);
+  await expect(page.getByText('Nội tộc', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Ngoại tộc', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Dâu / rể', { exact: true })).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: /Nguyễn Văn An/ }).first(),
   ).toContainText('Tuổi: [80]');
@@ -62,10 +68,13 @@ test('member search, profile, tree, and calendar work without browser errors', a
   ).toHaveCount(1);
   await expect(
     page.locator('.person-pill').filter({ hasText: 'Nguyễn Văn An' }),
-  ).toHaveClass(/person-pill--lineage.*person-pill--male/);
+  ).toHaveClass(/person-pill--male/);
   await expect(
     page.locator('.person-pill').filter({ hasText: 'Trần Thị Mai' }),
-  ).toHaveClass(/person-pill--marriage.*person-pill--female/);
+  ).toHaveClass(/person-pill--female/);
+  await expect(
+    page.locator('.person-pill').filter({ hasText: 'Nguyễn Văn An' }),
+  ).not.toHaveClass(/person-pill--(lineage|marriage)/);
   await expect(
     page
       .locator('.couple-node')

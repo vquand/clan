@@ -50,8 +50,6 @@
   --input: oklch(0.84 0.04 72);
   --ring: oklch(0.49 0.13 28);
   --radius: 0.8rem;
-  --lineage-surface: oklch(0.985 0.024 82);
-  --marriage-surface: oklch(0.975 0.025 171);
   --male-border: oklch(0.22 0.012 50);
   --female-border: oklch(0.57 0.17 8);
   --unknown-gender-border: oklch(0.58 0.025 62);
@@ -407,14 +405,6 @@
   transform: translateY(-2px);
   box-shadow: 0 14px 34px oklch(0.3 0.04 45 / 0.09);
 }
-.member-card--lineage,
-.person-pill--lineage {
-  --member-surface: var(--lineage-surface);
-}
-.member-card--marriage,
-.person-pill--marriage {
-  --member-surface: var(--marriage-surface);
-}
 .member-card--male,
 .person-pill--male {
   --member-border-color: var(--male-border);
@@ -669,18 +659,11 @@
   font-family: Georgia, 'Times New Roman', serif;
   font-weight: 700;
 }
-.legend-card,
 .legend-border {
   width: 1.2rem;
   height: 0.85rem;
   border: 2px solid var(--unknown-gender-border);
   border-radius: 0.25rem;
-}
-.legend-card--lineage {
-  background: var(--lineage-surface);
-}
-.legend-card--marriage {
-  background: var(--marriage-surface);
 }
 .legend-border--male {
   border-color: var(--male-border);

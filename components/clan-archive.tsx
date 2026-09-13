@@ -94,7 +94,7 @@ function MemberAvatar({
 }
 
 function memberCardClassName(baseClass: string, member: Member) {
-  return `${baseClass} ${baseClass}--${member.clanRelation} ${baseClass}--${member.gender}`;
+  return `${baseClass} ${baseClass}--${member.gender}`;
 }
 
 function MemberAge({ member, locale }: { member: Member; locale: Locale }) {
@@ -124,14 +124,6 @@ function MemberLegend({
       className="member-legend"
       aria-label={translate(locale, 'legendLabel')}
     >
-      <span>
-        <i className="legend-card legend-card--lineage" />
-        {translate(locale, 'clanLineage')}
-      </span>
-      <span>
-        <i className="legend-card legend-card--marriage" />
-        {translate(locale, 'clanMarriage')}
-      </span>
       <span>
         <i className="legend-border legend-border--male" />
         {translate(locale, 'genderMale')}
@@ -179,11 +171,6 @@ function MemberCard({
             generation: member.generation,
           })}{' '}
           · <MemberAge member={member} locale={locale} />
-          {' · '}
-          {translate(
-            locale,
-            member.clanRelation === 'lineage' ? 'clanLineage' : 'clanMarriage',
-          )}
           {member.branch ? ` · ${member.branch}` : ''}
         </span>
         <span className="member-card__bottom">
@@ -338,11 +325,7 @@ function PersonPill({
       <span>
         <strong>{member.fullName}</strong>
         <small>
-          <MemberAge member={member} locale={locale} /> ·{' '}
-          {translate(
-            locale,
-            member.clanRelation === 'lineage' ? 'clanLineage' : 'clanMarriage',
-          )}
+          <MemberAge member={member} locale={locale} />
         </small>
       </span>
     </button>
@@ -671,13 +654,6 @@ function MemberDetail({
               {translate(locale, 'generation', {
                 generation: member.generation,
               })}
-              {' · '}
-              {translate(
-                locale,
-                member.clanRelation === 'lineage'
-                  ? 'clanLineage'
-                  : 'clanMarriage',
-              )}
               {member.branch ? ` · ${member.branch}` : ''}
             </SheetDescription>
             <SheetTitle>{member.fullName}</SheetTitle>
