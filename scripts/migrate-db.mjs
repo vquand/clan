@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 import { neon } from '@neondatabase/serverless';
 
+import { splitSqlStatements } from './sql-statements.mjs';
+
 const databaseUrl = process.env.DATABASE_URL?.trim();
 
 if (!databaseUrl) {
@@ -41,8 +43,14 @@ for (const fileName of migrationFiles) {
     `${migrationsDirectory}/${fileName}`,
     'utf8',
   );
+  const statements = splitSqlStatements(migration);
+  if (statements.length === 0) {
+    throw new Error(
+      `Database migration ${fileName} contains no SQL statements`,
+    );
+  }
   await sql.transaction((transaction) => [
-    transaction.query(migration),
+    ...statements.map((statement) => transaction.query(statement)),
     transaction`
       INSERT INTO schema_migrations (file_name)
       VALUES (${fileName})
