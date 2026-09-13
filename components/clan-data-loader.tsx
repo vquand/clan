@@ -15,9 +15,11 @@ type LoadState =
 
 function DataLoadState({
   status,
+  clanDisplayName,
   onRetry,
 }: {
   status: 'loading' | 'error';
+  clanDisplayName?: string;
   onRetry: () => void;
 }) {
   const isLoading = status === 'loading';
@@ -33,10 +35,12 @@ function DataLoadState({
         ) : (
           <AlertTriangle aria-hidden />
         )}
-        <h1>{isLoading ? 'Đang tải gia phả…' : 'Chưa tải được gia phả'}</h1>
+        <h1>{isLoading ? 'Đang mở gia phả' : 'Chưa tải được gia phả'}</h1>
         <p>
           {isLoading
-            ? 'Đang tải thông tin…'
+            ? clanDisplayName
+              ? `Họ ${clanDisplayName}`
+              : 'Gia phả dòng họ'
             : 'Chưa kết nối được. Bạn thử lại nhé.'}
         </p>
         {!isLoading && (
@@ -51,9 +55,11 @@ function DataLoadState({
 }
 
 export function ClanDataLoader({
+  clanDisplayName,
   sampleData,
   remoteDataEnabled,
 }: {
+  clanDisplayName?: string;
   sampleData: ClanData | null;
   remoteDataEnabled: boolean;
 }) {
@@ -86,6 +92,7 @@ export function ClanDataLoader({
   if (state.status !== 'ready') {
     return (
       <DataLoadState
+        clanDisplayName={clanDisplayName}
         status={state.status}
         onRetry={() => {
           setState({ status: 'loading' });
@@ -97,6 +104,7 @@ export function ClanDataLoader({
 
   return (
     <ClanArchive
+      clanDisplayName={clanDisplayName}
       members={state.data.members}
       events={state.data.events}
       isSampleData={state.isSample}

@@ -180,6 +180,8 @@ DATABASE_URL="postgresql://..." CLAN_DATA_FILE="/private/path/clan-data.json" np
 
 Set `API_URL` in Vercel's **Production** environment to the Render service origin, for example `https://clan-api.onrender.com`. Set it in **Preview** as well if previews should use the backend. `NEXT_PUBLIC_API_URL` remains accepted while migrating existing projects, but the URL no longer needs to be exposed to browser code. Redeploy after changing environment variables; Vercel applies them to new deployments.
 
+Set `CLAN_DISPLAY_NAME` in the Vercel frontend build environment to the family name, for example `Đỗ Văn`. The public browser tab, archive header, and loading screen then use `Họ Đỗ Văn`. This value must be configured on the frontend build; a backend-only `.env` value cannot change a static Vercel page.
+
 Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and preferably a long random `ADMIN_SESSION_SECRET` only on the Render service. Never add them to Vercel or commit them to the repository. Open `/admin/` on the deployed Vercel site to use the workspace.
 
 ## Development commands

@@ -21,6 +21,8 @@ test('member search, profile, tree, and calendar work without browser errors', a
 
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
+  await expect(page).toHaveTitle('Họ Đỗ Văn');
+  await expect(page.getByRole('heading', { name: 'Họ Đỗ Văn' })).toBeVisible();
   await expect(
     page.getByRole('heading', { name: '10 thành viên · 3 thế hệ' }),
   ).toBeVisible();
@@ -117,6 +119,26 @@ test('member search, profile, tree, and calendar work without browser errors', a
   expect(errors).toEqual([]);
 });
 
+test('opens the configured clan record while data is loading', async ({
+  page,
+}, testInfo) => {
+  await page.route('**/api/clan', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await route.fulfill({ json: { members, events: clanEvents } });
+  });
+
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Đang mở gia phả' }),
+  ).toBeVisible();
+  await expect(page.getByText('Họ Đỗ Văn', { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('loading.png'),
+    fullPage: true,
+  });
+  await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
+});
+
 test('admin access stays minimal at the bottom of the archive', async ({
   page,
 }, testInfo) => {
@@ -126,7 +148,9 @@ test('admin access stays minimal at the bottom of the archive', async ({
   const adminAccess = page.locator('.archive-admin-login');
   await expect(adminAccess).toBeVisible();
   await expect(adminAccess).toHaveAttribute('data-expanded', 'false');
-  await expect(adminAccess.getByRole('button', { name: 'Quản trị' })).toBeVisible();
+  await expect(
+    adminAccess.getByRole('button', { name: 'Quản trị' }),
+  ).toBeVisible();
   await expect(adminAccess.getByLabel('Tên đăng nhập')).toHaveCount(0);
 
   await adminAccess.getByRole('button', { name: 'Quản trị' }).click();
@@ -134,8 +158,14 @@ test('admin access stays minimal at the bottom of the archive', async ({
   await expect(adminAccess).toHaveAttribute('data-expanded', 'true');
   await expect(adminAccess.getByLabel('Tên đăng nhập')).toBeVisible();
   await expect(adminAccess.getByLabel('Mật khẩu')).toBeVisible();
-  await expect(adminAccess.getByLabel('Tên đăng nhập')).toHaveAttribute('placeholder', '');
-  await expect(adminAccess.getByLabel('Mật khẩu')).toHaveAttribute('placeholder', '');
+  await expect(adminAccess.getByLabel('Tên đăng nhập')).toHaveAttribute(
+    'placeholder',
+    '',
+  );
+  await expect(adminAccess.getByLabel('Mật khẩu')).toHaveAttribute(
+    'placeholder',
+    '',
+  );
   await page.screenshot({
     path: testInfo.outputPath('admin-access.png'),
     fullPage: true,

@@ -880,10 +880,12 @@ function MemberDetail({
 }
 
 export function ClanArchive({
+  clanDisplayName,
   members,
   events,
   isSampleData = false,
 }: {
+  clanDisplayName?: string;
   members: Member[];
   events: ClanEvent[];
   isSampleData?: boolean;
@@ -938,7 +940,11 @@ export function ClanArchive({
         </div>
         <div className="brand-copy">
           <p>{translate(locale, 'brandKicker')}</p>
-          <h1>{translate(locale, 'brandTitle')}</h1>
+          <h1>
+            {clanDisplayName
+              ? translate(locale, 'clanTitle', { name: clanDisplayName })
+              : translate(locale, 'brandTitle')}
+          </h1>
         </div>
         <div className="header-tools">
           <div className="header-note">

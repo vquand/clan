@@ -3,6 +3,15 @@ import test from 'node:test';
 
 import { fetchClanData, getClanApiEndpoint } from '../lib/clan-api.ts';
 import { buildVercelConfig } from '../lib/vercel-config.mjs';
+import { getClanDisplayName } from '../lib/site-config.ts';
+
+void test('reads and trims the optional clan display name', () => {
+  assert.equal(
+    getClanDisplayName({ CLAN_DISPLAY_NAME: '  Đỗ Văn  ' }),
+    'Đỗ Văn',
+  );
+  assert.equal(getClanDisplayName({ CLAN_DISPLAY_NAME: '   ' }), undefined);
+});
 
 void test('uses the same-origin API route when remote data is enabled', () => {
   assert.equal(getClanApiEndpoint(true), '/api/clan');
