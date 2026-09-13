@@ -7,15 +7,17 @@ import {
   ChevronRight,
   Flower2,
   GitCommitHorizontal,
+  KeyRound,
   MapPin,
   Search,
   ShieldCheck,
   Sprout,
   TreePine,
+  UserRound,
   Users,
 } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
+import type { SubmitEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -58,12 +60,114 @@ import {
   READING_SIZE_STORAGE_KEY,
   type ReadingSize,
 } from '@/lib/preferences';
+import { AdminApiError, loginAdmin } from '@/lib/admin-api';
 
 const tabs = [
   { value: 'members', labelKey: 'tabMembers', icon: Users },
   { value: 'tree', labelKey: 'tabTree', icon: TreePine },
   { value: 'calendar', labelKey: 'tabCalendar', icon: CalendarDays },
 ] as const;
+
+function ArchiveAdminAccess({ locale }: { locale: Locale }) {
+  const [expanded, setExpanded] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    setPending(true);
+    try {
+      await loginAdmin(username, password);
+      window.location.assign('/admin/');
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof AdminApiError && caughtError.status === 503
+          ? translate(locale, 'adminConfigError')
+          : translate(locale, 'adminLoginError'),
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  if (!expanded) {
+    return (
+      <div className="archive-admin-login" data-expanded="false">
+        <Button
+          className="archive-admin-trigger"
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-expanded="false"
+          onClick={() => setExpanded(true)}
+        >
+          <ShieldCheck aria-hidden="true" />
+          {translate(locale, 'adminLink')}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="archive-admin-login"
+      data-expanded="true"
+      aria-label={translate(locale, 'adminLink')}
+      onSubmit={submit}
+    >
+      <Button
+        className="archive-admin-trigger"
+        type="submit"
+        variant="ghost"
+        size="sm"
+        disabled={pending}
+      >
+        <ShieldCheck aria-hidden="true" />
+        {pending ? '…' : translate(locale, 'adminLink')}
+      </Button>
+      <label className="sr-only" htmlFor="archive-admin-username">
+        {translate(locale, 'adminUsername')}
+      </label>
+      <span className="archive-admin-input">
+        <UserRound aria-hidden="true" />
+        <Input
+          id="archive-admin-username"
+          type="text"
+          autoComplete="username"
+          aria-label={translate(locale, 'adminUsername')}
+          placeholder=""
+          required
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+        />
+      </span>
+      <label className="sr-only" htmlFor="archive-admin-password">
+        {translate(locale, 'adminPassword')}
+      </label>
+      <span className="archive-admin-input">
+        <KeyRound aria-hidden="true" />
+        <Input
+          id="archive-admin-password"
+          type="password"
+          autoComplete="current-password"
+          aria-label={translate(locale, 'adminPassword')}
+          placeholder=""
+          required
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+      </span>
+      {error && (
+        <span className="archive-admin-error" role="alert">
+          {error}
+        </span>
+      )}
+    </form>
+  );
+}
 
 function formatDate(date: string | undefined, locale: Locale) {
   if (!date) return translate(locale, 'unknown');
@@ -919,10 +1023,6 @@ export function ClanArchive({
               </div>
             </fieldset>
           </div>
-          <Link className="archive-admin-link" href="/admin/">
-            <ShieldCheck aria-hidden="true" />
-            {translate(locale, 'adminLink')}
-          </Link>
         </div>
       </header>
       <Tabs
@@ -966,6 +1066,7 @@ export function ClanArchive({
         <p>
           {translate(locale, isSampleData ? 'footerSampleNote' : 'footerNote')}
         </p>
+        <ArchiveAdminAccess locale={locale} />
       </footer>
       <MemberDetail
         member={selectedMember}

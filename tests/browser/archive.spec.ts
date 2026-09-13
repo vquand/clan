@@ -117,6 +117,31 @@ test('member search, profile, tree, and calendar work without browser errors', a
   expect(errors).toEqual([]);
 });
 
+test('admin access stays minimal at the bottom of the archive', async ({
+  page,
+}, testInfo) => {
+  await serveSampleData(page);
+  await page.goto('/');
+
+  const adminAccess = page.locator('.archive-admin-login');
+  await expect(adminAccess).toBeVisible();
+  await expect(adminAccess).toHaveAttribute('data-expanded', 'false');
+  await expect(adminAccess.getByRole('button', { name: 'Quản trị' })).toBeVisible();
+  await expect(adminAccess.getByLabel('Tên đăng nhập')).toHaveCount(0);
+
+  await adminAccess.getByRole('button', { name: 'Quản trị' }).click();
+
+  await expect(adminAccess).toHaveAttribute('data-expanded', 'true');
+  await expect(adminAccess.getByLabel('Tên đăng nhập')).toBeVisible();
+  await expect(adminAccess.getByLabel('Mật khẩu')).toBeVisible();
+  await expect(adminAccess.getByLabel('Tên đăng nhập')).toHaveAttribute('placeholder', '');
+  await expect(adminAccess.getByLabel('Mật khẩu')).toHaveAttribute('placeholder', '');
+  await page.screenshot({
+    path: testInfo.outputPath('admin-access.png'),
+    fullPage: true,
+  });
+});
+
 test('widens tree people pills to display complete Vietnamese names', async ({
   page,
 }) => {
