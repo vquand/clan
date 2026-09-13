@@ -44,6 +44,20 @@ void test('shows a living member age without memorial brackets', () => {
   );
 });
 
+void test('uses the local calendar date for a living member age', () => {
+  assert.equal(
+    formatMemberAge(
+      {
+        ...baseMember,
+        status: 'living',
+        birthDate: '1976-09-13',
+      },
+      new Date('2026-09-13T00:30:00+07:00'),
+    ),
+    '50',
+  );
+});
+
 void test('brackets an unknown age only when the member is deceased', () => {
   assert.equal(
     formatMemberAge({ ...baseMember, status: 'deceased' }),

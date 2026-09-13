@@ -4,18 +4,37 @@ import {
   type MemberAvatarStyle,
 } from '../data/types.ts';
 
-function parseDate(value: string | undefined) {
-  if (!value) return undefined;
-  const date = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(date.getTime()) ? undefined : date;
+interface DateParts {
+  year: number;
+  month: number;
+  day: number;
 }
 
-function completedYears(start: Date, end: Date) {
-  let years = end.getUTCFullYear() - start.getUTCFullYear();
+function parseDate(value: string | undefined): DateParts | undefined {
+  if (!value) return undefined;
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+}
+
+function getLocalDateParts(date: Date): DateParts | undefined {
+  if (Number.isNaN(date.getTime())) return undefined;
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+    day: date.getDate(),
+  };
+}
+
+function completedYears(start: DateParts, end: DateParts) {
+  let years = end.year - start.year;
   const beforeAnniversary =
-    end.getUTCMonth() < start.getUTCMonth() ||
-    (end.getUTCMonth() === start.getUTCMonth() &&
-      end.getUTCDate() < start.getUTCDate());
+    end.month < start.month ||
+    (end.month === start.month && end.day < start.day);
   if (beforeAnniversary) years -= 1;
   return years >= 0 ? years : undefined;
 }
@@ -26,14 +45,16 @@ function calculateMemberAge(member: Member, referenceDate: Date) {
   }
 
   const endDate =
-    member.status === 'deceased' ? parseDate(member.deathDate) : referenceDate;
+    member.status === 'deceased'
+      ? parseDate(member.deathDate)
+      : getLocalDateParts(referenceDate);
   if (!endDate) return undefined;
 
   const birthDate = parseDate(member.birthDate);
   if (birthDate) return completedYears(birthDate, endDate);
   if (member.birthYear === undefined) return undefined;
 
-  const years = endDate.getUTCFullYear() - member.birthYear;
+  const years = endDate.year - member.birthYear;
   return years >= 0 ? years : undefined;
 }
 
