@@ -19,6 +19,8 @@ void test('accepts a valid clan dataset supplied at build time', () => {
         clanRelation: 'lineage',
         generation: 1,
         branch: 'Main branch',
+        avatarStyle: 'style-3',
+        avatarImageUrl: '/family/portraits/private-example.jpg',
         parentIds: [],
         spouseIds: [],
       },
@@ -33,5 +35,29 @@ void test('rejects malformed build-time clan data', () => {
   assert.throws(
     () => resolveClanData('{"members":"not-an-array","events":[]}'),
     /members.*array/i,
+  );
+});
+
+void test('rejects unsupported avatar styles', () => {
+  assert.throws(
+    () =>
+      resolveClanData(
+        JSON.stringify({
+          members: [
+            {
+              id: 'founder',
+              fullName: 'Private Example',
+              gender: 'other',
+              clanRelation: 'lineage',
+              generation: 1,
+              avatarStyle: 'style-9',
+              parentIds: [],
+              spouseIds: [],
+            },
+          ],
+          events: [],
+        }),
+      ),
+    /invalid member/i,
   );
 });

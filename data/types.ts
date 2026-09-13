@@ -1,5 +1,12 @@
 export type LifeStatus = 'living' | 'deceased';
 export type ClanRelation = 'lineage' | 'marriage';
+export const MEMBER_AVATAR_STYLES = [
+  'default',
+  'style-1',
+  'style-2',
+  'style-3',
+] as const;
+export type MemberAvatarStyle = (typeof MEMBER_AVATAR_STYLES)[number];
 
 export interface Member {
   id: string;
@@ -13,6 +20,8 @@ export interface Member {
   birthDate?: string;
   status?: LifeStatus;
   deathDate?: string;
+  avatarStyle?: MemberAvatarStyle;
+  avatarImageUrl?: string;
   deathAnniversaryLunar?: { day: number; month: number };
   parentIds: string[];
   spouseIds: string[];

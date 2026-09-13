@@ -188,6 +188,7 @@ test('uses API records without rendering the bundled sample first', async ({
             gender: 'other',
             clanRelation: 'lineage',
             generation: 0,
+            avatarStyle: 'style-2',
             parentIds: [],
             spouseIds: [],
           },
@@ -203,6 +204,10 @@ test('uses API records without rendering the bundled sample first', async ({
   ).toBeVisible();
   await expect(page.locator('.member-card')).toHaveCount(1);
   await expect(page.getByText('Database Member')).toBeVisible();
+  await expect(page.locator('.member-avatar img')).toHaveAttribute(
+    'src',
+    /unknown-style-2\.png/,
+  );
   await expect(page.getByText('Nguyễn Văn An')).toHaveCount(0);
   await expect(
     page.getByText('Thông tin lấy từ gia phả gia đình.'),

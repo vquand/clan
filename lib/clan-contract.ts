@@ -1,4 +1,8 @@
-import type { ClanEvent, Member } from '../data/types';
+import {
+  MEMBER_AVATAR_STYLES,
+  type ClanEvent,
+  type Member,
+} from '../data/types.ts';
 
 export interface ClanData {
   members: Member[];
@@ -25,6 +29,13 @@ export function isMember(value: unknown): value is Member {
     Number.isInteger(value.generation) &&
     (value.branch === undefined || typeof value.branch === 'string') &&
     (value.birthYear === undefined || Number.isInteger(value.birthYear)) &&
+    (value.avatarStyle === undefined ||
+      MEMBER_AVATAR_STYLES.includes(
+        value.avatarStyle as (typeof MEMBER_AVATAR_STYLES)[number],
+      )) &&
+    (value.avatarImageUrl === undefined ||
+      (typeof value.avatarImageUrl === 'string' &&
+        value.avatarImageUrl.trim() !== '')) &&
     (value.status === undefined ||
       (typeof value.status === 'string' &&
         ['living', 'deceased'].includes(value.status))) &&

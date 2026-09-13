@@ -1,4 +1,8 @@
-import type { Member } from '../data/types';
+import {
+  MEMBER_AVATAR_STYLES,
+  type Member,
+  type MemberAvatarStyle,
+} from '../data/types.ts';
 
 function parseDate(value: string | undefined) {
   if (!value) return undefined;
@@ -62,6 +66,23 @@ export function getMemberAvatarVariant(
   }
 
   return member.gender;
+}
+
+export function getMemberAvatarSource(
+  member: Member,
+  referenceDate = new Date(),
+) {
+  const customImage = member.avatarImageUrl?.trim();
+  if (customImage) return customImage;
+
+  const variant = getMemberAvatarVariant(member, referenceDate);
+  const style: MemberAvatarStyle = MEMBER_AVATAR_STYLES.includes(
+    member.avatarStyle ?? 'default',
+  )
+    ? (member.avatarStyle ?? 'default')
+    : 'default';
+  const styleSuffix = style === 'default' ? '' : `-${style}`;
+  return `/people-icons/${variant}${styleSuffix}.png`;
 }
 
 export function formatMemberAge(member: Member, referenceDate = new Date()) {

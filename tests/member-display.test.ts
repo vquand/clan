@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   formatMemberAge,
+  getMemberAvatarSource,
   getMemberAvatarVariant,
 } from '../lib/member-display.ts';
 import type { Member } from '../data/types.ts';
@@ -168,5 +169,30 @@ void test('selects people icons from gender and age', () => {
   assert.equal(
     getMemberAvatarVariant({ ...baseMember, gender: 'male' }, referenceDate),
     'male',
+  );
+});
+
+void test('uses a selected hairstyle or a real image when available', () => {
+  const member = {
+    ...baseMember,
+    status: 'living' as const,
+    birthYear: 1980,
+  };
+
+  assert.equal(
+    getMemberAvatarSource({ ...member, avatarStyle: 'default' }),
+    '/people-icons/male.png',
+  );
+  assert.equal(
+    getMemberAvatarSource({ ...member, avatarStyle: 'style-2' }),
+    '/people-icons/male-style-2.png',
+  );
+  assert.equal(
+    getMemberAvatarSource({
+      ...member,
+      avatarStyle: 'style-3',
+      avatarImageUrl: '/family/portraits/member.jpg',
+    }),
+    '/family/portraits/member.jpg',
   );
 });

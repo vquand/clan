@@ -46,7 +46,11 @@ import {
   translate,
   weekdayLabels,
 } from '@/lib/i18n';
-import { formatMemberAge, getMemberAvatarVariant } from '@/lib/member-display';
+import {
+  formatMemberAge,
+  getMemberAvatarSource,
+  getMemberAvatarVariant,
+} from '@/lib/member-display';
 import {
   normalizeReadingSize,
   READING_SIZE_STORAGE_KEY,
@@ -76,6 +80,7 @@ function MemberAvatar({
   small?: boolean;
 }) {
   const variant = getMemberAvatarVariant(member);
+  const source = getMemberAvatarSource(member);
   const memorialClass =
     member.status === 'deceased' ? ' member-avatar--deceased' : '';
   return (
@@ -89,7 +94,7 @@ function MemberAvatar({
     >
       <Image
         className="member-avatar__image"
-        src={`/people-icons/${variant}.png`}
+        src={source}
         alt=""
         width={384}
         height={512}

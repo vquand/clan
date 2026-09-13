@@ -96,6 +96,8 @@ export function assembleClanData({
       birthDate: asDate(row.birth_date),
       status: row.life_status ?? undefined,
       deathDate: asDate(row.death_date),
+      avatarStyle: row.avatar_style ?? undefined,
+      avatarImageUrl: row.avatar_image_url ?? undefined,
       deathAnniversaryLunar:
         lunarDay !== undefined && lunarMonth !== undefined
           ? { day: lunarDay, month: lunarMonth }
