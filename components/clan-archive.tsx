@@ -819,7 +819,7 @@ function CalendarView({
                     onClick={() => setSelectedEvent({ event, date: iso })}
                   >
                     <span aria-hidden="true">{event.calendar === 'lunar' ? '🌙' : '☀️'}</span>
-                    {event.title}
+                    <span className="day-event__title">{event.title}</span>
                   </button>
                 ))}
               </div>
@@ -854,7 +854,7 @@ function CalendarView({
               </div>
               <div>
                 <Badge variant="outline">{eventTypeLabel(event, locale)}</Badge>
-                <h4>{event.title}</h4>
+                <h4 className="event-card__title" title={event.title}>{event.title}</h4>
                 <p className="event-card__dates">
                   <Sun aria-hidden="true" /> {formatDate(date, locale)}
                   <span className="lunar-chip">{formatLunarDate(date, locale)}</span>

@@ -198,6 +198,42 @@ test('calendar explains both calendars and opens event details', async ({
   ).toHaveAttribute('href', 'https://maps.google.com/?q=family');
 });
 
+test('truncates long event names inside calendar cards', async ({ page }) => {
+  const now = new Date();
+  const longTitle =
+    'Ngày hội đại gia đình với tên sự kiện rất dài cần được thu gọn trong ô lịch';
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({
+      json: {
+        members,
+        events: [
+          {
+            id: 'long-event-name',
+            title: longTitle,
+            type: 'gathering',
+            calendar: 'solar',
+            day: now.getDate(),
+            month: now.getMonth() + 1,
+            recurrence: 'annual',
+            relatedMemberIds: [],
+            location: '',
+          },
+        ],
+      },
+    });
+  });
+
+  await page.goto('/');
+  const title = page.locator('.day-event__title').filter({ hasText: longTitle });
+  await expect(title).toBeVisible();
+  await expect(title).toHaveCSS('text-overflow', 'ellipsis');
+  const dimensions = await title.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
+});
+
 test('opens the configured clan record while data is loading', async ({
   page,
 }, testInfo) => {

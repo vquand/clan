@@ -879,7 +879,9 @@
   background: oklch(0.965 0.014 80);
 }
 .day-event {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
   width: 100%;
   min-height: 1.45rem;
   overflow: hidden;
@@ -905,7 +907,15 @@
   outline-offset: 1px;
 }
 .day-event > span {
-  margin-right: 0.2rem;
+  min-width: 0;
+}
+.day-event > span:first-child {
+  flex: 0 0 auto;
+}
+.day-event__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .day-event--clan-ceremony {
   background: oklch(0.9 0.08 92);
@@ -967,8 +977,15 @@
   font-size: 0.68rem;
 }
 .event-card h4 {
+  min-width: 0;
   margin: 0.35rem 0 0.2rem;
+  overflow: hidden;
   font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.event-card > div:last-child {
+  min-width: 0;
 }
 .event-card p {
   display: flex;
@@ -1820,7 +1837,8 @@
     padding: 0.6rem;
   }
   .day-event {
-    width: auto;
+    width: 100%;
+    min-width: 0;
     height: auto;
     padding: 0.35rem 0.45rem;
     color: oklch(0.29 0.08 28);
