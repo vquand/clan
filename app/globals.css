@@ -861,7 +861,7 @@
 .calendar-day {
   position: relative;
   overflow: hidden;
-  min-height: 80px;
+  min-height: 92px;
   padding: 0.35rem;
   background: var(--card);
   font-size: 0.85rem;
@@ -1957,7 +1957,7 @@
     grid-template-columns: repeat(7, minmax(0, 1fr));
   }
   .calendar-day {
-    min-height: 106px;
+    min-height: 116px;
     padding: 0.6rem;
   }
   .day-event {
