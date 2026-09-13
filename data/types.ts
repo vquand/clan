@@ -1,4 +1,5 @@
 export type LifeStatus = 'living' | 'deceased';
+export type AgeAtDeathQualifier = 'exact' | 'approximately' | 'under';
 export type ClanRelation = 'lineage' | 'marriage';
 export const MEMBER_AGE_GROUPS = ['senior'] as const;
 export type MemberAgeGroup = (typeof MEMBER_AGE_GROUPS)[number];
@@ -21,7 +22,10 @@ export interface Member {
   birthYear?: number;
   birthDate?: string;
   status?: LifeStatus;
+  deathYear?: number;
   deathDate?: string;
+  ageAtDeath?: number;
+  ageAtDeathQualifier?: AgeAtDeathQualifier;
   ageGroup?: MemberAgeGroup;
   avatarStyle?: MemberAvatarStyle;
   avatarImageUrl?: string;

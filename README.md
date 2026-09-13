@@ -97,7 +97,7 @@ Required member fields (birth year and life status are optional when unknown):
 }
 ```
 
-Optional member fields include `familiarName`, `birthDate`, `deathDate`, `deathAnniversaryLunar`, `hometown`, `residence`, and `biography`. Spouse references must be declared in both member records.
+Optional member fields include `familiarName`, `birthDate`, `deathYear`, `deathDate`, `ageAtDeath`, `ageAtDeathQualifier`, `deathAnniversaryLunar`, `hometown`, `residence`, and `biography`. Use `ageAtDeathQualifier` with `exact`, `approximately`, or `under` when the recorded age is qualified. Spouse references must be declared in both member records.
 
 Required event fields:
 

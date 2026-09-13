@@ -45,19 +45,22 @@ await sql.transaction([
   sql`
     INSERT INTO members (
       id, full_name, familiar_name, gender, clan_relation, birth_year, birth_date,
-      life_status, death_date, age_group, avatar_style, avatar_image_url,
+      life_status, death_year, death_date, age_at_death, age_at_death_qualifier,
+      age_group, avatar_style, avatar_image_url,
       death_anniversary_lunar_day,
       death_anniversary_lunar_month, hometown, residence, biography
     )
     SELECT
       id::uuid, full_name, familiar_name, gender, clan_relation, birth_year,
-      NULLIF(birth_date, '')::date, life_status,
-      NULLIF(death_date, '')::date, age_group, avatar_style, avatar_image_url,
+      NULLIF(birth_date, '')::date, life_status, death_year,
+      NULLIF(death_date, '')::date, age_at_death, age_at_death_qualifier,
+      age_group, avatar_style, avatar_image_url,
       death_anniversary_lunar_day,
       death_anniversary_lunar_month, hometown, residence, biography
     FROM jsonb_to_recordset(${JSON.stringify(normalized.members)}::jsonb) AS item(
       id text, full_name text, familiar_name text, gender text, clan_relation text,
-      birth_year integer, birth_date text, life_status text, death_date text,
+      birth_year integer, birth_date text, life_status text, death_year integer,
+      death_date text, age_at_death integer, age_at_death_qualifier text,
       age_group text, avatar_style text, avatar_image_url text,
       death_anniversary_lunar_day integer,
       death_anniversary_lunar_month integer, hometown text, residence text,

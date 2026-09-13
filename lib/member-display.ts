@@ -40,18 +40,39 @@ function completedYears(start: DateParts, end: DateParts) {
 }
 
 function calculateMemberAge(member: Member, referenceDate: Date) {
-  const endDate =
-    member.status === 'deceased'
-      ? parseDate(member.deathDate)
-      : getLocalDateParts(referenceDate);
-  if (!endDate) return undefined;
-
   const birthDate = parseDate(member.birthDate);
-  if (birthDate) return completedYears(birthDate, endDate);
+  if (member.status === 'deceased') {
+    const deathDate = parseDate(member.deathDate);
+    if (deathDate) {
+      if (birthDate) return completedYears(birthDate, deathDate);
+      if (member.birthYear !== undefined) {
+        const years = deathDate.year - member.birthYear;
+        return years >= 0 ? years : undefined;
+      }
+    }
+
+    if (member.birthYear !== undefined && member.deathYear !== undefined) {
+      const years = member.deathYear - member.birthYear;
+      return years >= 0 ? years : undefined;
+    }
+    return undefined;
+  }
+
+  const currentDate = getLocalDateParts(referenceDate);
+  if (!currentDate) return undefined;
+  if (birthDate) return completedYears(birthDate, currentDate);
   if (member.birthYear === undefined) return undefined;
 
-  const years = endDate.year - member.birthYear;
+  const years = currentDate.year - member.birthYear;
   return years >= 0 ? years : undefined;
+}
+
+function formatRecordedDeathAge(member: Member) {
+  if (member.ageAtDeath === undefined) return undefined;
+  if (member.ageAtDeathQualifier === 'under') return `[<${member.ageAtDeath}]`;
+  if (member.ageAtDeathQualifier === 'approximately')
+    return `[~${member.ageAtDeath}]`;
+  return `[${member.ageAtDeath}]`;
 }
 
 export type MemberAvatarVariant =
@@ -109,7 +130,10 @@ export function getMemberAvatarSource(
 export function formatMemberAge(member: Member, referenceDate = new Date()) {
   const age = calculateMemberAge(member, referenceDate);
   if (member.status === 'deceased') {
+    const recordedAge = formatRecordedDeathAge(member);
+    if (!member.deathDate && recordedAge) return recordedAge;
     if (age !== undefined) return `[${age}]`;
+    if (recordedAge) return recordedAge;
     return member.ageGroup === 'senior' ? '[60+]' : '[ -- ]';
   }
   if (age !== undefined) return String(age);

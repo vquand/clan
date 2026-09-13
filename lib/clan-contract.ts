@@ -30,6 +30,16 @@ export function isMember(value: unknown): value is Member {
     Number.isInteger(value.generation) &&
     (value.branch === undefined || typeof value.branch === 'string') &&
     (value.birthYear === undefined || Number.isInteger(value.birthYear)) &&
+    (value.deathYear === undefined || Number.isInteger(value.deathYear)) &&
+    (value.ageAtDeath === undefined ||
+      (Number.isInteger(value.ageAtDeath) &&
+        Number(value.ageAtDeath) >= 0 &&
+        Number(value.ageAtDeath) <= 150)) &&
+    (value.ageAtDeathQualifier === undefined ||
+      (typeof value.ageAtDeathQualifier === 'string' &&
+        ['exact', 'approximately', 'under'].includes(
+          value.ageAtDeathQualifier,
+        ))) &&
     (value.ageGroup === undefined ||
       MEMBER_AGE_GROUPS.includes(
         value.ageGroup as (typeof MEMBER_AGE_GROUPS)[number],

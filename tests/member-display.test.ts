@@ -103,6 +103,59 @@ void test('calculates age when a member has birth data but no life status', () =
   );
 });
 
+void test('formats recorded exact and qualified ages at death', () => {
+  assert.equal(
+    formatMemberAge({
+      ...baseMember,
+      status: 'deceased',
+      ageAtDeath: 87,
+      ageAtDeathQualifier: 'exact',
+    } as Member),
+    '[87]',
+  );
+  assert.equal(
+    formatMemberAge({
+      ...baseMember,
+      status: 'deceased',
+      ageAtDeath: 18,
+      ageAtDeathQualifier: 'approximately',
+    } as Member),
+    '[~18]',
+  );
+  assert.equal(
+    formatMemberAge({
+      ...baseMember,
+      status: 'deceased',
+      ageAtDeath: 3,
+      ageAtDeathQualifier: 'under',
+    } as Member),
+    '[<3]',
+  );
+});
+
+void test('calculates a deceased age from birth and death years', () => {
+  assert.equal(
+    formatMemberAge({
+      ...baseMember,
+      status: 'deceased',
+      birthYear: 1926,
+      deathYear: 1986,
+    } as Member),
+    '[60]',
+  );
+  assert.equal(
+    formatMemberAge({
+      ...baseMember,
+      status: 'deceased',
+      birthYear: 1926,
+      deathYear: 1986,
+      ageAtDeath: 60,
+      ageAtDeathQualifier: 'approximately',
+    } as Member),
+    '[~60]',
+  );
+});
+
 void test('uses an approximate senior age group when exact dates are unavailable', () => {
   const member = {
     ...baseMember,

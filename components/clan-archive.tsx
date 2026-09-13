@@ -717,6 +717,12 @@ function MemberDetail({
               <dt>{translate(locale, 'birthDate')}</dt>
               <dd>{formatDate(member.birthDate, locale)}</dd>
             </div>
+            {member.deathYear !== undefined && (
+              <div>
+                <dt>{translate(locale, 'deathYear')}</dt>
+                <dd>{member.deathYear}</dd>
+              </div>
+            )}
             {member.deathDate && (
               <div>
                 <dt>{translate(locale, 'deathDate')}</dt>

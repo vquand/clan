@@ -113,6 +113,10 @@ void test('assembles the API dataset from relational rows and derives generation
         full_name: 'Founder',
         gender: 'male',
         clan_relation: 'lineage',
+        birth_year: 1926,
+        death_year: 1986,
+        age_at_death: 60,
+        age_at_death_qualifier: 'approximately',
         age_group: 'senior',
         avatar_style: 'style-2',
         avatar_image_url: '/family/portraits/founder.jpg',
@@ -238,6 +242,10 @@ void test('assembles the API dataset from relational rows and derives generation
     '00000000-0000-4000-8000-000000000004',
   ]);
   assert.equal(data.members[0].ageGroup, 'senior');
+  assert.equal(data.members[0].birthYear, 1926);
+  assert.equal(data.members[0].deathYear, 1986);
+  assert.equal(data.members[0].ageAtDeath, 60);
+  assert.equal(data.members[0].ageAtDeathQualifier, 'approximately');
   assert.equal(data.members[0].avatarStyle, 'style-2');
   assert.equal(data.members[0].avatarImageUrl, '/family/portraits/founder.jpg');
   assert.deepEqual(data.events, [
