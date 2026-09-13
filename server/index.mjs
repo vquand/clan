@@ -58,7 +58,7 @@ async function getClanData() {
     sql`
       SELECT
         id, full_name, familiar_name, gender, clan_relation, birth_year, birth_date,
-        life_status, death_date, avatar_style, avatar_image_url,
+        life_status, death_date, age_group, avatar_style, avatar_image_url,
         death_anniversary_lunar_day,
         death_anniversary_lunar_month, hometown, residence, biography
       FROM members

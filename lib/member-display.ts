@@ -65,6 +65,10 @@ export function getMemberAvatarVariant(
       return member.gender === 'male' ? 'senior-man' : 'senior-woman';
   }
 
+  if (member.ageGroup === 'senior') {
+    return member.gender === 'male' ? 'senior-man' : 'senior-woman';
+  }
+
   return member.gender;
 }
 
@@ -88,7 +92,9 @@ export function getMemberAvatarSource(
 export function formatMemberAge(member: Member, referenceDate = new Date()) {
   const age = calculateMemberAge(member, referenceDate);
   if (member.status === 'deceased') {
-    return age === undefined ? '[ -- ]' : `[${age}]`;
+    if (age !== undefined) return `[${age}]`;
+    return member.ageGroup === 'senior' ? '[60+]' : '[ -- ]';
   }
-  return age === undefined ? '--' : String(age);
+  if (age !== undefined) return String(age);
+  return member.ageGroup === 'senior' ? '60+' : '--';
 }

@@ -1,5 +1,7 @@
 export type LifeStatus = 'living' | 'deceased';
 export type ClanRelation = 'lineage' | 'marriage';
+export const MEMBER_AGE_GROUPS = ['senior'] as const;
+export type MemberAgeGroup = (typeof MEMBER_AGE_GROUPS)[number];
 export const MEMBER_AVATAR_STYLES = [
   'default',
   'style-1',
@@ -20,6 +22,7 @@ export interface Member {
   birthDate?: string;
   status?: LifeStatus;
   deathDate?: string;
+  ageGroup?: MemberAgeGroup;
   avatarStyle?: MemberAvatarStyle;
   avatarImageUrl?: string;
   deathAnniversaryLunar?: { day: number; month: number };

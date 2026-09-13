@@ -72,6 +72,18 @@ void test('uses year precision when only the birth year is known', () => {
   );
 });
 
+void test('uses an approximate senior age group when exact dates are unavailable', () => {
+  const member = {
+    ...baseMember,
+    gender: 'female' as const,
+    status: 'deceased' as const,
+    ageGroup: 'senior' as const,
+  };
+
+  assert.equal(getMemberAvatarVariant(member), 'senior-woman');
+  assert.equal(formatMemberAge(member), '[60+]');
+});
+
 void test('selects people icons from gender and age', () => {
   const referenceDate = new Date('2026-09-13T00:00:00Z');
   assert.equal(

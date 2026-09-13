@@ -36,6 +36,7 @@ export function normalizeSeedData(data, generateId) {
     birth_date: member.birthDate,
     life_status: member.status,
     death_date: member.deathDate,
+    age_group: member.ageGroup,
     avatar_style: member.avatarStyle ?? 'default',
     avatar_image_url: member.avatarImageUrl,
     death_anniversary_lunar_day: member.deathAnniversaryLunar?.day,

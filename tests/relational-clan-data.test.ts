@@ -20,6 +20,7 @@ void test('converts import-only keys into generated database IDs', () => {
           clanRelation: 'lineage',
           generation: 9,
           branch: 'Invented branch',
+          ageGroup: 'senior',
           avatarStyle: 'style-1',
           avatarImageUrl: '/family/portraits/person-one.jpg',
           parentIds: [],
@@ -59,6 +60,7 @@ void test('converts import-only keys into generated database IDs', () => {
   );
   assert.equal(normalized.members[0].full_name, 'Person One');
   assert.equal(normalized.members[0].clan_relation, 'lineage');
+  assert.equal(normalized.members[0].age_group, 'senior');
   assert.equal(normalized.members[0].avatar_style, 'style-1');
   assert.equal(
     normalized.members[0].avatar_image_url,
@@ -111,6 +113,7 @@ void test('assembles the API dataset from relational rows and derives generation
         full_name: 'Founder',
         gender: 'male',
         clan_relation: 'lineage',
+        age_group: 'senior',
         avatar_style: 'style-2',
         avatar_image_url: '/family/portraits/founder.jpg',
       },
@@ -234,6 +237,7 @@ void test('assembles the API dataset from relational rows and derives generation
   assert.deepEqual(data.members[2].spouseIds, [
     '00000000-0000-4000-8000-000000000004',
   ]);
+  assert.equal(data.members[0].ageGroup, 'senior');
   assert.equal(data.members[0].avatarStyle, 'style-2');
   assert.equal(data.members[0].avatarImageUrl, '/family/portraits/founder.jpg');
   assert.deepEqual(data.events, [

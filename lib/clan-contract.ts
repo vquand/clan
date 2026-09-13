@@ -1,4 +1,5 @@
 import {
+  MEMBER_AGE_GROUPS,
   MEMBER_AVATAR_STYLES,
   type ClanEvent,
   type Member,
@@ -29,6 +30,10 @@ export function isMember(value: unknown): value is Member {
     Number.isInteger(value.generation) &&
     (value.branch === undefined || typeof value.branch === 'string') &&
     (value.birthYear === undefined || Number.isInteger(value.birthYear)) &&
+    (value.ageGroup === undefined ||
+      MEMBER_AGE_GROUPS.includes(
+        value.ageGroup as (typeof MEMBER_AGE_GROUPS)[number],
+      )) &&
     (value.avatarStyle === undefined ||
       MEMBER_AVATAR_STYLES.includes(
         value.avatarStyle as (typeof MEMBER_AVATAR_STYLES)[number],
