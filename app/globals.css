@@ -655,7 +655,8 @@
   --member-border-color: var(--unknown-gender-border);
   --member-surface: var(--card);
   display: flex;
-  width: 185px;
+  width: max-content;
+  min-width: 185px;
   align-items: center;
   gap: 0.65rem;
   padding: 0.7rem;
@@ -667,14 +668,13 @@
 }
 .person-pill > span:last-child {
   display: flex;
+  width: max-content;
   min-width: 0;
   flex-direction: column;
 }
 .person-pill strong {
-  overflow: hidden;
   font-family: Georgia, serif;
   font-size: 0.9rem;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .person-pill small {

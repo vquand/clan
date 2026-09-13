@@ -117,6 +117,62 @@ test('member search, profile, tree, and calendar work without browser errors', a
   expect(errors).toEqual([]);
 });
 
+test('widens tree people pills to display complete Vietnamese names', async ({
+  page,
+}) => {
+  const longName = 'Đỗ Văn Tiền Nguyễn Thị Minh Khánh';
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({
+      json: {
+        members: [
+          {
+            id: 'founder',
+            fullName: 'Đỗ Văn Tiền',
+            gender: 'male',
+            clanRelation: 'lineage',
+            generation: 0,
+            parentIds: [],
+            spouseIds: [],
+          },
+          {
+            id: 'descendant',
+            fullName: longName,
+            gender: 'female',
+            clanRelation: 'lineage',
+            generation: 1,
+            parentIds: ['founder'],
+            spouseIds: [],
+          },
+        ],
+        events: [],
+      },
+    });
+  });
+
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
+  await page.getByRole('tab', { name: 'Gia phả' }).click();
+
+  const longNamePill = page
+    .locator('.person-pill')
+    .filter({ hasText: longName });
+  await expect(longNamePill).toBeVisible();
+  await expect(longNamePill.locator('strong')).toHaveText(longName);
+  const dimensions = await longNamePill.evaluate((element) => {
+    const name = element.querySelector('strong');
+    if (!name) throw new Error('Missing member name');
+    return {
+      pillWidth: element.getBoundingClientRect().width,
+      nameClientWidth: name.getBoundingClientRect().width,
+      nameScrollWidth: name.scrollWidth,
+    };
+  });
+  expect(dimensions.pillWidth).toBeGreaterThan(185);
+  expect(dimensions.nameScrollWidth).toBeLessThanOrEqual(
+    dimensions.nameClientWidth,
+  );
+});
+
 test('language switching works and the reading size persists locally', async ({
   page,
 }, testInfo) => {
