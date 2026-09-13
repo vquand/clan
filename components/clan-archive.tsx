@@ -200,11 +200,9 @@ function toIsoDate(date: Date) {
 
 function MoonPhaseBanner({
   date,
-  locale,
   className = '',
 }: {
   date: string;
-  locale: Locale;
   className?: string;
 }) {
   const lunar = getLunarDate(new Date(`${date}T00:00:00`));
@@ -214,13 +212,10 @@ function MoonPhaseBanner({
       className={`moon-phase-banner moon-phase-banner--${phase}${
         className ? ` ${className}` : ''
       }`}
-      aria-label={formatLunarDate(date, locale)}
+      aria-hidden="true"
       data-moon-phase={phase}
     >
       <span className="moon-phase-banner__orb" aria-hidden="true" />
-      <span className="moon-phase-banner__label">
-        {formatLunarDate(date, locale)}
-      </span>
     </div>
   );
 }
@@ -863,7 +858,7 @@ function CalendarView({
                 }${selectedDate === iso ? ' calendar-day--selected' : ''}`}
                 key={iso}
               >
-                <MoonPhaseBanner date={iso} locale={locale} />
+                <MoonPhaseBanner date={iso} />
                 <button
                   type="button"
                   className="calendar-day__select"
@@ -904,27 +899,28 @@ function CalendarView({
           })}
         </div>
         <aside
-          className={`event-list${selectedDate ? ' event-list--selected' : ''}`}
+          className="event-list"
           aria-label={translate(locale, 'importantDatesLabel')}
         >
-          {selectedDate && (
-            <MoonPhaseBanner
-              date={selectedDate}
-              locale={locale}
-              className="moon-phase-banner--event-list"
-            />
-          )}
           <div className="event-list__heading">
-            <p className="eyebrow">
-              {selectedDate
-                ? translate(locale, 'selectedDay')
-                : translate(locale, 'yearEyebrow', { year: visible.year })}
-            </p>
-            <h3>
-              {selectedDate
-                ? formatDate(selectedDate, locale)
-                : translate(locale, 'memorableDays')}
-            </h3>
+            <div className="event-list__heading-copy">
+              <p className="eyebrow">
+                {selectedDate
+                  ? translate(locale, 'selectedDay')
+                  : translate(locale, 'yearEyebrow', { year: visible.year })}
+              </p>
+              <h3>
+                {selectedDate
+                  ? formatDate(selectedDate, locale)
+                  : translate(locale, 'memorableDays')}
+              </h3>
+            </div>
+            {selectedDate && (
+              <MoonPhaseBanner
+                date={selectedDate}
+                className="moon-phase-banner--event-list"
+              />
+            )}
             {selectedDate && (
               <Button
                 type="button"

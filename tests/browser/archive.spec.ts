@@ -30,8 +30,9 @@ test('member search, profile, tree, and calendar work without browser errors', a
     /calendar-day--selected/,
   );
   await expect(
-    page.locator('.event-list--selected .moon-phase-banner'),
+    page.locator('.event-list__heading > .moon-phase-banner--event-list'),
   ).toBeVisible();
+  await expect(page.locator('.moon-phase-banner__label')).toHaveCount(0);
 
   await page.getByRole('tab', { name: 'Thành viên' }).click();
   await expect(
@@ -194,6 +195,7 @@ test('calendar explains both calendars and opens event details', async ({
   await expect(
     page.locator('.calendar-day--today .moon-phase-banner'),
   ).toBeVisible();
+  await expect(page.locator('.event-list > .moon-phase-banner')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Xem tất cả ngày' }).click();
 

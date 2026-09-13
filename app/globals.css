@@ -873,12 +873,9 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 0.35rem;
   pointer-events: none;
   opacity: 0.07;
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease;
+  transition: opacity 180ms ease;
 }
 .moon-phase-banner__orb {
   position: relative;
@@ -929,31 +926,9 @@
 .moon-phase-banner--waning-crescent .moon-phase-banner__orb::before {
   transform: translateX(-57%);
 }
-.moon-phase-banner__label {
-  align-self: flex-end;
-  max-width: 0;
-  overflow: hidden;
-  color: var(--primary);
-  font-size: 0.62rem;
-  font-weight: 750;
-  line-height: 1.2;
-  opacity: 0;
-  white-space: nowrap;
-  transition:
-    max-width 180ms ease,
-    opacity 180ms ease;
-}
 .calendar-day:hover .moon-phase-banner,
-.calendar-day--selected .moon-phase-banner,
-.event-list--selected .moon-phase-banner {
+.calendar-day--selected .moon-phase-banner {
   opacity: 0.34;
-  transform: scale(1.03);
-}
-.calendar-day:hover .moon-phase-banner__label,
-.calendar-day--selected .moon-phase-banner__label,
-.event-list--selected .moon-phase-banner__label {
-  max-width: 8rem;
-  opacity: 1;
 }
 .calendar-day__select {
   display: flex;
@@ -1050,21 +1025,34 @@
   border: 1px solid var(--border);
   border-radius: 1rem;
 }
-.event-list > *:not(.moon-phase-banner) {
+.event-list__heading {
+  position: relative;
+  min-height: 4.9rem;
+}
+.event-list__heading-copy {
+  position: relative;
+  z-index: 1;
+  padding-right: 5rem;
+}
+.event-list > * {
   position: relative;
   z-index: 1;
 }
-.event-list > .moon-phase-banner {
+.event-list__heading > .moon-phase-banner--event-list {
+  inset: 0 0 auto auto;
+  width: 4.25rem;
+  height: 4.25rem;
   z-index: 0;
-}
-.moon-phase-banner--event-list {
   align-items: center;
-  justify-content: flex-end;
-  padding: 1rem;
-  opacity: 0.1;
-}
-.event-list--selected .moon-phase-banner--event-list {
+  justify-content: center;
   opacity: 0.24;
+}
+.event-list__heading > .moon-phase-banner--event-list .moon-phase-banner__orb {
+  width: 3.5rem;
+}
+.event-list__heading > .moon-phase-banner--event-list + button {
+  position: relative;
+  z-index: 1;
 }
 .event-list h3 {
   margin: 0;
