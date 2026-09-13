@@ -868,7 +868,7 @@
 }
 .moon-phase-banner {
   position: absolute;
-  inset: 0.2rem 0.25rem 0.35rem;
+  inset: 0.2rem 0.25rem calc(0.35rem + 10px);
   z-index: 0;
   display: flex;
   align-items: flex-end;
