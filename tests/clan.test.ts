@@ -9,6 +9,8 @@ import {
   getChildren,
   orderCoupleMembers,
   getEventDate,
+  getLunarDate,
+  getSolarDateFromLunar,
   getGenerationFilters,
   getGenerations,
   getRelatives,
@@ -77,6 +79,35 @@ void test('a member is never included in their own relationship list', () => {
 
 void test('fixed annual events resolve into the requested year', () => {
   assert.equal(getEventDate(clanEvents[1], 2027), '2027-04-18');
+});
+
+void test('calendar dates convert between solar and Vietnamese lunar dates', () => {
+  assert.deepEqual(getLunarDate(new Date('2026-04-28T00:00:00')), {
+    year: 2026,
+    month: 3,
+    day: 12,
+    isLeapMonth: false,
+  });
+  assert.equal(
+    getSolarDateFromLunar({ year: 2026, month: 3, day: 12 }),
+    '2026-04-28',
+  );
+});
+
+void test('lunar event dates use the leap occurrence when the target month repeats', () => {
+  assert.deepEqual(getLunarDate(new Date('2023-03-22T00:00:00')), {
+    year: 2023,
+    month: 2,
+    day: 1,
+    isLeapMonth: true,
+  });
+  assert.equal(
+    getSolarDateFromLunar(
+      { year: 2023, month: 2, day: 1 },
+      { preferLeapMonth: true },
+    ),
+    '2023-03-22',
+  );
 });
 
 void test('calendar grid always contains complete weeks', () => {

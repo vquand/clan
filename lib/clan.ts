@@ -1,5 +1,8 @@
 import type { ClanEvent, Member } from '../data/types';
 import { type Locale, translate } from './i18n.ts';
+import { getSolarDateFromLunar } from './lunar-calendar.ts';
+
+export { getLunarDate, getSolarDateFromLunar } from './lunar-calendar.ts';
 
 export function getMember(id: string, allMembers: Member[]) {
   return allMembers.find((member) => member.id === id);
@@ -113,8 +116,13 @@ export function describeRelationship(
 }
 
 export function getEventDate(event: ClanEvent, year: number) {
-  if (event.calendar === 'lunar') return event.solarDates?.[year] ?? null;
   if (event.recurrence === 'once' && event.year !== year) return null;
+  if (event.calendar === 'lunar') {
+    return (
+      event.solarDates?.[year] ??
+      getSolarDateFromLunar({ year, month: event.month, day: event.day })
+    );
+  }
   const month = String(event.month).padStart(2, '0');
   const day = String(event.day).padStart(2, '0');
   return `${event.year ?? year}-${month}-${day}`;
