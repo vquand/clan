@@ -86,6 +86,23 @@ void test('uses year precision when only the birth year is known', () => {
   );
 });
 
+void test('calculates age when a member has birth data but no life status', () => {
+  assert.equal(
+    formatMemberAge(
+      { ...baseMember, birthYear: 1952 },
+      new Date('2026-09-13T00:30:00+07:00'),
+    ),
+    '74',
+  );
+  assert.equal(
+    formatMemberAge(
+      { ...baseMember, birthDate: '1952-09-13' },
+      new Date('2026-09-13T00:30:00+07:00'),
+    ),
+    '74',
+  );
+});
+
 void test('uses an approximate senior age group when exact dates are unavailable', () => {
   const member = {
     ...baseMember,

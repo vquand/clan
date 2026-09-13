@@ -40,10 +40,6 @@ function completedYears(start: DateParts, end: DateParts) {
 }
 
 function calculateMemberAge(member: Member, referenceDate: Date) {
-  if (member.status !== 'living' && member.status !== 'deceased') {
-    return undefined;
-  }
-
   const endDate =
     member.status === 'deceased'
       ? parseDate(member.deathDate)

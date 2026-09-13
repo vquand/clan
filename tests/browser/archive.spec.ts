@@ -270,6 +270,61 @@ test('uses API records without rendering the bundled sample first', async ({
   ).toBeVisible();
 });
 
+test('calculates age for API members without an explicit life status', async ({
+  page,
+}) => {
+  const currentYear = new Date().getFullYear();
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({
+      json: {
+        members: [
+          {
+            id: 'founder',
+            fullName: 'Member With Birth Year',
+            gender: 'male',
+            clanRelation: 'lineage',
+            generation: 0,
+            birthYear: currentYear - 40,
+            parentIds: [],
+            spouseIds: ['spouse'],
+          },
+          {
+            id: 'spouse',
+            fullName: 'Member Spouse',
+            gender: 'female',
+            clanRelation: 'marriage',
+            generation: 0,
+            birthDate: `${currentYear - 39}-01-01`,
+            parentIds: [],
+            spouseIds: ['founder'],
+          },
+          {
+            id: 'child',
+            fullName: 'Member Child',
+            gender: 'male',
+            clanRelation: 'lineage',
+            generation: 1,
+            birthYear: currentYear - 10,
+            parentIds: ['founder', 'spouse'],
+            spouseIds: [],
+          },
+        ],
+        events: [],
+      },
+    });
+  });
+
+  await page.goto('/');
+  await expect(
+    page.getByRole('button', { name: /Member With Birth Year/ }),
+  ).toContainText('Tuổi: 40');
+
+  await page.getByRole('tab', { name: 'Gia phả' }).click();
+  await expect(
+    page.locator('.person-pill').filter({ hasText: 'Member With Birth Year' }),
+  ).toContainText('Tuổi: 40');
+});
+
 test('shows a retryable error instead of mock members when the API fails', async ({
   page,
 }) => {
