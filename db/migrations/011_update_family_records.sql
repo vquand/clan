@@ -44,7 +44,7 @@ WHERE full_name = 'Nguyễn Thị Rụt';
 
 INSERT INTO members (
   full_name, gender, clan_relation, birth_year, life_status,
-  age_at_death, age_at_death_qualifier
+  age_at_death, age_at_death_qualifier, avatar_style
 )
 SELECT
   source.full_name,
@@ -53,7 +53,8 @@ SELECT
   source.birth_year,
   'deceased',
   source.age_at_death,
-  source.age_at_death_qualifier
+  source.age_at_death_qualifier,
+  'default'
 FROM (
   VALUES
     ('Đỗ Văn Quất', 'male', 1921, 87, 'exact'),
