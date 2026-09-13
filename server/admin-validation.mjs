@@ -74,12 +74,23 @@ function normalizedIds(value, field) {
 }
 
 function imageUrl(value) {
-  const result = optionalString(value, 'avatarImageUrl', 2000);
-  if (
-    result !== null &&
-    !result.startsWith('/') &&
-    !/^https?:\/\//i.test(result)
-  ) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string') throw new Error('avatarImageUrl must be text');
+  const result = value.trim();
+  if (result === '') return null;
+
+  if (result.startsWith('data:')) {
+    if (result.length > 24_000) {
+      throw new Error('avatarImageUrl is too large');
+    }
+    if (!/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(result)) {
+      throw new Error('avatarImageUrl must be a compressed JPEG, PNG, or WebP data URL');
+    }
+    return result;
+  }
+
+  if (result.length > 2_000) throw new Error('avatarImageUrl is too long');
+  if (!result.startsWith('/') && !/^https?:\/\//i.test(result)) {
     throw new Error('avatarImageUrl must be a local path or HTTP(S) URL');
   }
   return result;

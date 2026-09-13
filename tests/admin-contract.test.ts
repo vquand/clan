@@ -16,7 +16,10 @@ void test('creates and verifies an expiring admin session token', () => {
 
   assert.equal(verifySessionToken(token, 'test-secret', 1_001), 'admin');
   assert.equal(verifySessionToken(token, 'wrong-secret', 1_001), null);
-  assert.equal(verifySessionToken(token, 'test-secret', 1_000 + 60 * 60 * 9), null);
+  assert.equal(
+    verifySessionToken(token, 'test-secret', 1_000 + 60 * 60 * 9),
+    null,
+  );
 });
 
 void test('normalizes a member with editable relationship and avatar fields', () => {
@@ -57,15 +60,42 @@ void test('normalizes a member with editable relationship and avatar fields', ()
   );
 });
 
-void test('rejects self relationships and mismatched recorded death ages', () => {
+void test('accepts a compressed base64 avatar and rejects oversized image data', () => {
+  const avatarDataUrl = 'data:image/webp;base64,AAAA';
+  assert.equal(
+    normalizeMemberInput({
+      fullName: 'Compressed portrait',
+      gender: 'female',
+      clanRelation: 'lineage',
+      avatarImageUrl: avatarDataUrl,
+    }).avatar_image_url,
+    avatarDataUrl,
+  );
+
   assert.throws(
     () =>
       normalizeMemberInput({
-        fullName: 'Self',
-        gender: 'other',
+        fullName: 'Oversized portrait',
+        gender: 'female',
         clanRelation: 'lineage',
-        parentIds: ['member-1'],
-      }, { memberId: 'member-1' }),
+        avatarImageUrl: `data:image/webp;base64,${'A'.repeat(24_000)}`,
+      }),
+    /avatarImageUrl is too large/i,
+  );
+});
+
+void test('rejects self relationships and mismatched recorded death ages', () => {
+  assert.throws(
+    () =>
+      normalizeMemberInput(
+        {
+          fullName: 'Self',
+          gender: 'other',
+          clanRelation: 'lineage',
+          parentIds: ['member-1'],
+        },
+        { memberId: 'member-1' },
+      ),
     /cannot relate to itself/i,
   );
 

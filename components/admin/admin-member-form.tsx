@@ -2,7 +2,6 @@
 
 import type { SubmitEvent } from 'react';
 import { useState } from 'react';
-import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -362,42 +361,6 @@ export function AdminMemberForm({
               setField('deathAnniversaryLunarMonth', event.target.value)
             }
           />
-        </div>
-        <div className="admin-field">
-          <label htmlFor="member-avatar-style">Profile avatar</label>
-          <select
-            id="member-avatar-style"
-            className="admin-select"
-            value={form.avatarStyle}
-            onChange={(event) =>
-              setField('avatarStyle', event.target.value as MemberFormState['avatarStyle'])
-            }
-          >
-            <option value="default">Default</option>
-            <option value="style-1">Style 1</option>
-            <option value="style-2">Style 2</option>
-            <option value="style-3">Style 3</option>
-          </select>
-        </div>
-        <div className="admin-field admin-field--wide">
-          <label htmlFor="member-avatar-image">Custom image URL</label>
-          <Input
-            id="member-avatar-image"
-            type="text"
-            placeholder="https://… or /portraits/name.jpg"
-            value={form.avatarImageUrl}
-            onChange={(event) => setField('avatarImageUrl', event.target.value)}
-          />
-          {form.avatarImageUrl && (
-            <Image
-              className="admin-image-preview"
-              src={form.avatarImageUrl}
-              alt="Custom avatar preview"
-              width={72}
-              height={88}
-              unoptimized
-            />
-          )}
         </div>
         <div className="admin-field">
           <label htmlFor="member-hometown">Hometown</label>

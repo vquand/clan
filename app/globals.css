@@ -1345,6 +1345,118 @@
   object-fit: contain;
   object-position: center bottom;
 }
+.admin-record-avatar-trigger {
+  padding: 0;
+  cursor: pointer;
+  appearance: none;
+}
+.admin-record-avatar-trigger:focus-visible {
+  outline: 3px solid oklch(0.65 0.11 49 / 0.45);
+  outline-offset: 3px;
+}
+.admin-avatar-popover {
+  width: min(19rem, calc(100vw - 2rem)) !important;
+  max-width: calc(100vw - 2rem) !important;
+  padding: 0.85rem !important;
+}
+.admin-avatar-popover-header {
+  display: grid;
+  gap: 0.2rem;
+}
+.admin-avatar-popover-header strong {
+  font-family: Georgia, serif;
+  font-size: 1rem;
+}
+.admin-avatar-popover-header span {
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+}
+.admin-avatar-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+.admin-avatar-option {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 5.1rem;
+  place-items: center;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  color: var(--muted-foreground);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.62rem;
+  line-height: 1.1;
+  text-align: center;
+}
+.admin-avatar-option:hover,
+.admin-avatar-option[aria-pressed='true'] {
+  color: var(--foreground);
+  border-color: var(--primary);
+  background: var(--muted);
+}
+.admin-avatar-option[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px oklch(0.39 0.135 25 / 0.16);
+}
+.admin-avatar-option > img {
+  width: 2.1rem;
+  height: 2.75rem;
+  object-fit: contain;
+}
+.admin-avatar-option > svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  color: var(--primary);
+}
+.admin-avatar-option > svg:last-child {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  width: 0.8rem;
+  height: 0.8rem;
+}
+.admin-avatar-option--upload {
+  cursor: pointer;
+  border-style: dashed;
+}
+.admin-avatar-upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.65rem;
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-avatar-upload-button svg {
+  width: 0.85rem;
+}
+.admin-avatar-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+.admin-avatar-error {
+  margin: 0.55rem 0 0;
+  color: var(--destructive);
+  font-size: 0.72rem;
+}
+.admin-avatar-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
 .admin-event-icon {
   height: 3rem;
   color: var(--primary);

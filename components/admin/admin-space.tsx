@@ -11,10 +11,10 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { AdminEventForm } from '@/components/admin/admin-event-form';
+import { AdminAvatarPicker } from '@/components/admin/admin-avatar-picker';
 import { AdminLogin } from '@/components/admin/admin-login';
 import { AdminMemberForm } from '@/components/admin/admin-member-form';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,6 @@ import {
 } from '@/lib/admin-api';
 import type { AdminEventInput, AdminMemberInput } from '@/lib/admin-contract';
 import type { ClanEvent, Member } from '@/data/types';
-import { getMemberAvatarSource } from '@/lib/member-display';
 
 type AdminStatus = 'checking' | 'login' | 'loading' | 'ready' | 'error';
 type AdminSection = 'members' | 'events';
@@ -41,20 +40,6 @@ type AdminSection = 'members' | 'events';
 function getErrorMessage(error: unknown) {
   if (error instanceof AdminApiError) return error.message;
   return 'The admin service is temporarily unavailable.';
-}
-
-function RecordAvatar({ member }: { member: Member }) {
-  return (
-    <span className="admin-record-avatar">
-      <Image
-        src={getMemberAvatarSource(member)}
-        alt=""
-        width={96}
-        height={116}
-        unoptimized
-      />
-    </span>
-  );
 }
 
 function AdminSummary({ members, events }: { members: number; events: number }) {
@@ -77,13 +62,20 @@ function AdminSummary({ members, events }: { members: number; events: number }) 
 function MemberRecords({
   members,
   query,
+  pending,
   onEdit,
   onDelete,
+  onAvatarSave,
 }: {
   members: Member[];
   query: string;
+  pending: boolean;
   onEdit: (member: Member) => void;
   onDelete: (member: Member) => void;
+  onAvatarSave: (
+    member: Member,
+    input: Pick<AdminMemberInput, 'avatarStyle' | 'avatarImageUrl'>,
+  ) => Promise<boolean>;
 }) {
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -100,7 +92,11 @@ function MemberRecords({
     <ul className="admin-record-list">
       {filtered.map((member) => (
         <li className="admin-record" key={member.id}>
-          <RecordAvatar member={member} />
+          <AdminAvatarPicker
+            member={member}
+            pending={pending}
+            onSave={(input) => onAvatarSave(member, input)}
+          />
           <div className="admin-record-copy">
             <h3>{member.fullName}</h3>
             <p>
@@ -229,8 +225,10 @@ export function AdminSpace() {
       await loadData();
       setMemberDialogOpen(false);
       setEventDialogOpen(false);
+      return true;
     } catch (caughtError) {
       setError(getErrorMessage(caughtError));
+      return false;
     } finally {
       setPending(false);
     }
@@ -368,11 +366,15 @@ export function AdminSpace() {
           <MemberRecords
             members={data.members}
             query={query}
+            pending={pending}
             onEdit={(member) => {
               setEditingMember(member);
               setMemberDialogOpen(true);
             }}
             onDelete={removeMember}
+            onAvatarSave={(member, input) =>
+              afterMutation(() => updateMember(member.id, input))
+            }
           />
         ) : (
           <EventRecords
@@ -401,11 +403,13 @@ export function AdminSpace() {
             pending={pending}
             onCancel={() => setMemberDialogOpen(false)}
             onSubmit={(input: AdminMemberInput) =>
-              afterMutation(() =>
-                editingMember
-                  ? updateMember(editingMember.id, input)
-                  : createMember(input),
-              )
+              (async () => {
+                await afterMutation(() =>
+                  editingMember
+                    ? updateMember(editingMember.id, input)
+                    : createMember(input),
+                );
+              })()
             }
           />
         </DialogContent>
@@ -425,9 +429,13 @@ export function AdminSpace() {
             pending={pending}
             onCancel={() => setEventDialogOpen(false)}
             onSubmit={(input: AdminEventInput) =>
-              afterMutation(() =>
-                editingEvent ? updateEvent(editingEvent.id, input) : createEvent(input),
-              )
+              (async () => {
+                await afterMutation(() =>
+                  editingEvent
+                    ? updateEvent(editingEvent.id, input)
+                    : createEvent(input),
+                );
+              })()
             }
           />
         </DialogContent>

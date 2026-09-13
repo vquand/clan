@@ -83,11 +83,59 @@ test('admin can sign in and manage relationships and unassigned events', async (
   });
 
   await page.goto('/admin/');
-  await expect(page.getByRole('heading', { name: 'Family archive admin' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Family archive admin' }),
+  ).toBeVisible();
   await page.getByLabel('Username').fill('admin');
   await page.getByLabel('Password').fill('secret');
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Keep the family record current.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Keep the family record current.' }),
+  ).toBeVisible();
+
+  const childRecord = page
+    .locator('.admin-record')
+    .filter({ hasText: 'Child' });
+  await childRecord
+    .getByRole('button', { name: 'Choose avatar for Child' })
+    .click();
+  const avatarDialog = page.getByRole('dialog', { name: 'Choose avatar' });
+  await expect(avatarDialog).toBeVisible();
+  await expect(
+    avatarDialog.getByRole('button', { name: 'Default avatar' }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await page.screenshot({
+    path: testInfo.outputPath('avatar-picker.png'),
+    fullPage: true,
+  });
+  await avatarDialog.getByRole('button', { name: 'Style 2 avatar' }).click();
+  await avatarDialog.getByRole('button', { name: 'Save avatar' }).click();
+  await expect(avatarDialog).toBeHidden();
+  expect(
+    data.members.find((member) => member.id === childId)?.avatarStyle,
+  ).toBe('style-2');
+
+  await childRecord
+    .getByRole('button', { name: 'Choose avatar for Child' })
+    .click();
+  const customPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64',
+  );
+  await avatarDialog.locator('input[type="file"]').setInputFiles({
+    name: 'portrait.png',
+    mimeType: 'image/png',
+    buffer: customPng,
+  });
+  await expect(
+    avatarDialog.getByRole('button', { name: 'Custom avatar' }),
+  ).toBeVisible();
+  await avatarDialog.getByRole('button', { name: 'Custom avatar' }).click();
+  await avatarDialog.getByRole('button', { name: 'Save avatar' }).click();
+  await expect(avatarDialog).toBeHidden();
+  expect(
+    data.members.find((member) => member.id === childId)?.avatarImageUrl,
+  ).toMatch(/^data:image\/(webp|jpeg);base64,/);
 
   await page
     .locator('.admin-record')
@@ -107,5 +155,8 @@ test('admin can sign in and manage relationships and unassigned events', async (
   await page.getByRole('button', { name: 'Add event' }).click();
   await expect(page.getByText('Open family day')).toBeVisible();
   await expect(page.getByText('0 related members')).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('admin.png'), fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath('admin.png'),
+    fullPage: true,
+  });
 });

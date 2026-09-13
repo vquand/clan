@@ -163,6 +163,8 @@ The protected admin API uses:
 - `POST|PATCH|DELETE /api/admin/members` and `/api/admin/members/:id` for member CRUD, parent/spouse links, and avatar fields;
 - `POST|PATCH|DELETE /api/admin/events` and `/api/admin/events/:id` for event CRUD and optional 0-to-many member links.
 
+The admin member avatar picker offers the four system avatar styles plus one custom image. Uploaded custom images are center-cropped to 64×64, compressed to a small JPEG/WebP data URL, limited to 24 KB, and validated again by the API and database before saving to Neon.
+
 Each member stores an internal `clan_relation` value: `lineage` for names
 containing `Đỗ` and `marriage` for people who joined from outside the clan.
 The value supports the family-tree data model and is not shown as a relationship
