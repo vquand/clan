@@ -57,7 +57,7 @@ async function getClanData() {
   ] = await Promise.all([
     sql`
       SELECT
-        id, full_name, familiar_name, gender, birth_year, birth_date,
+        id, full_name, familiar_name, gender, clan_relation, birth_year, birth_date,
         life_status, death_date, death_anniversary_lunar_day,
         death_anniversary_lunar_month, hometown, residence, biography
       FROM members

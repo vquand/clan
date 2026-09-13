@@ -156,6 +156,10 @@ Render runs `db:migrate` before starting the API and exposes:
 - `GET /health` for the Render health check;
 - `GET /api/clan` for the Vercel frontend.
 
+Each member stores an explicit `clan_relation` value: `lineage` for the clan
+line and `marriage` for someone who joined through marriage. This value is not
+inferred from surname, gender, or visual position in the family tree.
+
 Seed the database once from a machine that can access the private dataset:
 
 ```bash

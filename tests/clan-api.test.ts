@@ -16,6 +16,7 @@ void test('returns validated clan data from the API', async () => {
         id: '00000000-0000-4000-8000-000000000001',
         fullName: 'Database Member',
         gender: 'other',
+        clanRelation: 'lineage',
         generation: 0,
         parentIds: [],
         spouseIds: [],

@@ -4,6 +4,7 @@
       "id": "sample-founder",
       "fullName": "Sample Founder",
       "gender": "other",
+      "clanRelation": "lineage",
       "generation": 1,
       "branch": "Main branch",
       "birthYear": 1950,

@@ -1,10 +1,12 @@
 export type LifeStatus = 'living' | 'deceased';
+export type ClanRelation = 'lineage' | 'marriage';
 
 export interface Member {
   id: string;
   fullName: string;
   familiarName?: string;
   gender: 'male' | 'female' | 'other';
+  clanRelation: ClanRelation;
   generation: number;
   branch?: string;
   birthYear?: number;

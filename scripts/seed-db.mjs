@@ -44,17 +44,17 @@ await sql.transaction([
   sql`DELETE FROM members`,
   sql`
     INSERT INTO members (
-      id, full_name, familiar_name, gender, birth_year, birth_date,
+      id, full_name, familiar_name, gender, clan_relation, birth_year, birth_date,
       life_status, death_date, death_anniversary_lunar_day,
       death_anniversary_lunar_month, hometown, residence, biography
     )
     SELECT
-      id::uuid, full_name, familiar_name, gender, birth_year,
+      id::uuid, full_name, familiar_name, gender, clan_relation, birth_year,
       NULLIF(birth_date, '')::date, life_status,
       NULLIF(death_date, '')::date, death_anniversary_lunar_day,
       death_anniversary_lunar_month, hometown, residence, biography
     FROM jsonb_to_recordset(${JSON.stringify(normalized.members)}::jsonb) AS item(
-      id text, full_name text, familiar_name text, gender text,
+      id text, full_name text, familiar_name text, gender text, clan_relation text,
       birth_year integer, birth_date text, life_status text, death_date text,
       death_anniversary_lunar_day integer,
       death_anniversary_lunar_month integer, hometown text, residence text,

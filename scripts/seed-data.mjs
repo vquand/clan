@@ -6,6 +6,11 @@ export function normalizeSeedData(data, generateId) {
     if (memberIds.has(member.id)) {
       throw new Error(`Duplicate member import key: ${member.id}`);
     }
+    if (!['lineage', 'marriage'].includes(member.clanRelation)) {
+      throw new Error(
+        `Member ${member.id} must declare clanRelation as lineage or marriage`,
+      );
+    }
     memberIds.set(member.id, generateId());
   }
   for (const event of data.events) {
@@ -26,6 +31,7 @@ export function normalizeSeedData(data, generateId) {
     full_name: member.fullName,
     familiar_name: member.familiarName,
     gender: member.gender,
+    clan_relation: member.clanRelation,
     birth_year: member.birthYear,
     birth_date: member.birthDate,
     life_status: member.status,

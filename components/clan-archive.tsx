@@ -36,6 +36,7 @@ import {
   getGenerationFilters,
   getMember,
   getRelatives,
+  orderCoupleMembers,
 } from '@/lib/clan';
 import {
   DEFAULT_LOCALE,
@@ -45,6 +46,7 @@ import {
   translate,
   weekdayLabels,
 } from '@/lib/i18n';
+import { formatMemberAge } from '@/lib/member-display';
 import {
   normalizeReadingSize,
   READING_SIZE_STORAGE_KEY,
@@ -91,6 +93,66 @@ function MemberAvatar({
   );
 }
 
+function memberCardClassName(baseClass: string, member: Member) {
+  return `${baseClass} ${baseClass}--${member.clanRelation} ${baseClass}--${member.gender}`;
+}
+
+function MemberAge({ member, locale }: { member: Member; locale: Locale }) {
+  const age = formatMemberAge(member);
+  return (
+    <span
+      className={
+        member.status === 'deceased'
+          ? 'member-age member-age--memorial'
+          : 'member-age'
+      }
+    >
+      {translate(locale, 'age')}: {age}
+    </span>
+  );
+}
+
+function MemberLegend({
+  locale,
+  showParent = false,
+}: {
+  locale: Locale;
+  showParent?: boolean;
+}) {
+  return (
+    <div
+      className="member-legend"
+      aria-label={translate(locale, 'legendLabel')}
+    >
+      <span>
+        <i className="legend-card legend-card--lineage" />
+        {translate(locale, 'clanLineage')}
+      </span>
+      <span>
+        <i className="legend-card legend-card--marriage" />
+        {translate(locale, 'clanMarriage')}
+      </span>
+      <span>
+        <i className="legend-border legend-border--male" />
+        {translate(locale, 'genderMale')}
+      </span>
+      <span>
+        <i className="legend-border legend-border--female" />
+        {translate(locale, 'genderFemale')}
+      </span>
+      <span>
+        <code>[97]</code>
+        {translate(locale, 'legendMemorialAge')}
+      </span>
+      {showParent && (
+        <span>
+          <i className="legend-line" /> {translate(locale, 'legendParent')}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function MemberCard({
   member,
   locale,
@@ -102,7 +164,7 @@ function MemberCard({
 }) {
   return (
     <button
-      className="member-card"
+      className={memberCardClassName('member-card', member)}
       onClick={() => onSelect(member)}
       type="button"
     >
@@ -116,7 +178,12 @@ function MemberCard({
           {translate(locale, 'generation', {
             generation: member.generation,
           })}{' '}
-          · {member.birthYear ?? translate(locale, 'unknown')}
+          · <MemberAge member={member} locale={locale} />
+          {' · '}
+          {translate(
+            locale,
+            member.clanRelation === 'lineage' ? 'clanLineage' : 'clanMarriage',
+          )}
           {member.branch ? ` · ${member.branch}` : ''}
         </span>
         <span className="member-card__bottom">
@@ -195,6 +262,7 @@ function MembersView({
         </div>
         <p>{translate(locale, 'memberIntro')}</p>
       </div>
+      <MemberLegend locale={locale} />
       <div className="member-toolbar">
         <div className="search-box">
           <Search aria-hidden="true" />
@@ -254,30 +322,27 @@ function PersonPill({
   member,
   locale,
   onSelect,
-  spouse = false,
 }: {
   member?: Member;
   locale: Locale;
   onSelect: (member: Member) => void;
-  spouse?: boolean;
 }) {
   if (!member) return null;
   return (
     <button
       type="button"
-      className={spouse ? 'person-pill person-pill--spouse' : 'person-pill'}
+      className={memberCardClassName('person-pill', member)}
       onClick={() => onSelect(member)}
     >
       <MemberAvatar member={member} small />
       <span>
         <strong>{member.fullName}</strong>
         <small>
-          {member.birthYear ?? translate(locale, 'unknown')} ·{' '}
-          {member.status === 'deceased'
-            ? translate(locale, 'deceased')
-            : member.status === 'living'
-              ? (member.residence ?? translate(locale, 'unknownResidence'))
-              : translate(locale, 'unknown')}
+          <MemberAge member={member} locale={locale} /> ·{' '}
+          {translate(
+            locale,
+            member.clanRelation === 'lineage' ? 'clanLineage' : 'clanMarriage',
+          )}
         </small>
       </span>
     </button>
@@ -296,10 +361,11 @@ function CoupleNode({
   onSelect: (member: Member) => void;
 }) {
   const spouse = getMember(member.spouseIds[0] ?? '', members);
+  const [leftMember, rightMember] = orderCoupleMembers(member, spouse);
   return (
     <div className="couple-node">
-      <PersonPill member={member} locale={locale} onSelect={onSelect} />
-      {spouse && (
+      <PersonPill member={leftMember} locale={locale} onSelect={onSelect} />
+      {rightMember && (
         <>
           <span
             className="union-mark"
@@ -308,10 +374,9 @@ function CoupleNode({
             &amp;
           </span>
           <PersonPill
-            member={spouse}
+            member={rightMember}
             locale={locale}
             onSelect={onSelect}
-            spouse
           />
         </>
       )}
@@ -373,29 +438,12 @@ function TreeView({
   onSelect: (member: Member) => void;
 }) {
   const treeScrollRef = useRef<HTMLElement>(null);
-  const roots = members.filter((member, index) => {
-    if (
-      member.parentIds.length > 0 ||
-      getChildren(member.id, members).length === 0
-    )
-      return false;
-    if (
-      members.some(
-        (relative) =>
-          relative.parentIds.length > 0 &&
-          relative.spouseIds.includes(member.id),
-      )
-    )
-      return false;
-    return !members
-      .slice(0, index)
-      .some(
-        (previous) =>
-          previous.parentIds.length === 0 &&
-          previous.spouseIds.includes(member.id) &&
-          getChildren(previous.id, members).length > 0,
-      );
-  });
+  const roots = members.filter(
+    (member) =>
+      member.clanRelation === 'lineage' &&
+      member.parentIds.length === 0 &&
+      getChildren(member.id, members).length > 0,
+  );
   const generationCount = new Set(members.map((member) => member.generation))
     .size;
   useEffect(() => {
@@ -439,21 +487,7 @@ function TreeView({
           </ul>
         </div>
       </section>
-      <div
-        className="tree-legend"
-        aria-label={translate(locale, 'legendLabel')}
-      >
-        <span>
-          <i className="legend-dot" /> {translate(locale, 'legendMember')}
-        </span>
-        <span>
-          <i className="legend-dot legend-dot--spouse" />{' '}
-          {translate(locale, 'legendSpouse')}
-        </span>
-        <span>
-          <i className="legend-line" /> {translate(locale, 'legendParent')}
-        </span>
-      </div>
+      <MemberLegend locale={locale} showParent />
     </section>
   );
 }
@@ -637,6 +671,13 @@ function MemberDetail({
               {translate(locale, 'generation', {
                 generation: member.generation,
               })}
+              {' · '}
+              {translate(
+                locale,
+                member.clanRelation === 'lineage'
+                  ? 'clanLineage'
+                  : 'clanMarriage',
+              )}
               {member.branch ? ` · ${member.branch}` : ''}
             </SheetDescription>
             <SheetTitle>{member.fullName}</SheetTitle>
@@ -671,6 +712,10 @@ function MemberDetail({
             )}
           </div>
           <dl className="detail-list">
+            <div>
+              <dt>{translate(locale, 'age')}</dt>
+              <dd>{formatMemberAge(member)}</dd>
+            </div>
             <div>
               <dt>{translate(locale, 'birthYear')}</dt>
               <dd>{member.birthYear ?? translate(locale, 'unknown')}</dd>

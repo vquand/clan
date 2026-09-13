@@ -25,6 +25,15 @@ test('member search, profile, tree, and calendar work without browser errors', a
     page.getByRole('heading', { name: '10 thành viên qua 3 thế hệ' }),
   ).toBeVisible();
   await expect(page.locator('.member-card')).toHaveCount(10);
+  await expect(
+    page.getByRole('button', { name: /Nguyễn Văn An/ }).first(),
+  ).toHaveClass(/member-card--lineage.*member-card--male/);
+  await expect(
+    page.getByRole('button', { name: /Trần Thị Mai/ }).first(),
+  ).toHaveClass(/member-card--marriage.*member-card--female/);
+  await expect(
+    page.getByRole('button', { name: /Nguyễn Văn An/ }).first(),
+  ).toContainText('Tuổi: [80]');
 
   const search = page.getByLabel('Tìm thành viên');
   await search.fill('Giang');
@@ -51,6 +60,18 @@ test('member search, profile, tree, and calendar work without browser errors', a
   await expect(
     page.locator('.family-tree').getByText('Trần Thị Mai', { exact: true }),
   ).toHaveCount(1);
+  await expect(
+    page.locator('.person-pill').filter({ hasText: 'Nguyễn Văn An' }),
+  ).toHaveClass(/person-pill--lineage.*person-pill--male/);
+  await expect(
+    page.locator('.person-pill').filter({ hasText: 'Trần Thị Mai' }),
+  ).toHaveClass(/person-pill--marriage.*person-pill--female/);
+  await expect(
+    page
+      .locator('.couple-node')
+      .filter({ hasText: 'Nguyễn Thị Chi' })
+      .locator('.person-pill'),
+  ).toHaveText([/Phạm Quốc Hòa/, /Nguyễn Thị Chi/]);
   await expect(
     page.locator('.family-tree').getByText('Lê Thu Lan', { exact: true }),
   ).toHaveCount(1);
@@ -126,6 +147,7 @@ test('uses API records without rendering the bundled sample first', async ({
             id: '00000000-0000-4000-8000-000000000001',
             fullName: 'Database Member',
             gender: 'other',
+            clanRelation: 'lineage',
             generation: 0,
             parentIds: [],
             spouseIds: [],

@@ -21,6 +21,7 @@ export function isMember(value: unknown): value is Member {
     typeof value.id === 'string' &&
     typeof value.fullName === 'string' &&
     ['male', 'female', 'other'].includes(String(value.gender)) &&
+    ['lineage', 'marriage'].includes(String(value.clanRelation)) &&
     Number.isInteger(value.generation) &&
     (value.branch === undefined || typeof value.branch === 'string') &&
     (value.birthYear === undefined || Number.isInteger(value.birthYear)) &&

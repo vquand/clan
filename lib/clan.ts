@@ -5,6 +5,32 @@ export function getMember(id: string, allMembers: Member[]) {
   return allMembers.find((member) => member.id === id);
 }
 
+const coupleGenderOrder: Record<Member['gender'], number> = {
+  male: 0,
+  female: 1,
+  other: 2,
+};
+
+export function orderCoupleMembers(member: Member): [Member];
+export function orderCoupleMembers(
+  member: Member,
+  spouse: Member,
+): [Member, Member];
+export function orderCoupleMembers(
+  member: Member,
+  spouse: Member | undefined,
+): [Member, Member?];
+export function orderCoupleMembers(
+  member: Member,
+  spouse?: Member,
+): [Member, Member?] {
+  if (!spouse) return [member];
+
+  return coupleGenderOrder[member.gender] <= coupleGenderOrder[spouse.gender]
+    ? [member, spouse]
+    : [spouse, member];
+}
+
 export function getChildren(id: string, allMembers: Member[]) {
   return allMembers
     .filter((member) => member.parentIds.includes(id))

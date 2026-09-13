@@ -17,6 +17,7 @@ void test('converts import-only keys into generated database IDs', () => {
           id: 'person-name-slug',
           fullName: 'Person One',
           gender: 'female',
+          clanRelation: 'lineage',
           generation: 9,
           branch: 'Invented branch',
           parentIds: [],
@@ -26,6 +27,7 @@ void test('converts import-only keys into generated database IDs', () => {
           id: 'another-name-slug',
           fullName: 'Person Two',
           gender: 'male',
+          clanRelation: 'marriage',
           generation: 9,
           branch: 'Invented branch',
           parentIds: [],
@@ -54,6 +56,8 @@ void test('converts import-only keys into generated database IDs', () => {
     '00000000-0000-4000-8000-000000000011',
   );
   assert.equal(normalized.members[0].full_name, 'Person One');
+  assert.equal(normalized.members[0].clan_relation, 'lineage');
+  assert.equal(normalized.members[1].clan_relation, 'marriage');
   assert.equal('generation' in normalized.members[0], false);
   assert.equal('branch' in normalized.members[0], false);
   assert.deepEqual(normalized.spouses, [
@@ -70,6 +74,28 @@ void test('converts import-only keys into generated database IDs', () => {
   ]);
 });
 
+void test('requires an explicit clan relationship for every seed member', () => {
+  assert.throws(
+    () =>
+      normalizeSeedData(
+        {
+          members: [
+            {
+              id: 'member-without-relation',
+              fullName: 'Unclassified Person',
+              gender: 'other',
+              parentIds: [],
+              spouseIds: [],
+            },
+          ],
+          events: [],
+        },
+        () => '00000000-0000-4000-8000-000000000001',
+      ),
+    /must declare clanRelation/i,
+  );
+});
+
 void test('assembles the API dataset from relational rows and derives generations', () => {
   const data = assembleClanData({
     memberRows: [
@@ -77,21 +103,25 @@ void test('assembles the API dataset from relational rows and derives generation
         id: '00000000-0000-4000-8000-000000000001',
         full_name: 'Founder',
         gender: 'male',
+        clan_relation: 'lineage',
       },
       {
         id: '00000000-0000-4000-8000-000000000002',
         full_name: 'Founder spouse',
         gender: 'female',
+        clan_relation: 'marriage',
       },
       {
         id: '00000000-0000-4000-8000-000000000003',
         full_name: 'Child',
         gender: 'female',
+        clan_relation: 'lineage',
       },
       {
         id: '00000000-0000-4000-8000-000000000004',
         full_name: 'Child spouse',
         gender: 'male',
+        clan_relation: 'marriage',
       },
     ],
     parentRows: [
@@ -147,11 +177,13 @@ void test('assembles the API dataset from relational rows and derives generation
         id: string;
         fullName: string;
         generation: number;
+        clanRelation: string;
         branch?: string;
       }) => ({
         id: member.id,
         fullName: member.fullName,
         generation: member.generation,
+        clanRelation: member.clanRelation,
         branch: member.branch,
       }),
     ),
@@ -160,24 +192,28 @@ void test('assembles the API dataset from relational rows and derives generation
         id: '00000000-0000-4000-8000-000000000001',
         fullName: 'Founder',
         generation: 0,
+        clanRelation: 'lineage',
         branch: undefined,
       },
       {
         id: '00000000-0000-4000-8000-000000000002',
         fullName: 'Founder spouse',
         generation: 0,
+        clanRelation: 'marriage',
         branch: undefined,
       },
       {
         id: '00000000-0000-4000-8000-000000000003',
         fullName: 'Child',
         generation: 1,
+        clanRelation: 'lineage',
         branch: undefined,
       },
       {
         id: '00000000-0000-4000-8000-000000000004',
         fullName: 'Child spouse',
         generation: 1,
+        clanRelation: 'marriage',
         branch: undefined,
       },
     ],

@@ -7,6 +7,7 @@ import {
   buildCalendarDays,
   describeRelationship,
   getChildren,
+  orderCoupleMembers,
   getEventDate,
   getGenerationFilters,
   getGenerations,
@@ -22,6 +23,20 @@ void test('children are derived from parent references and sorted by birth year'
   assert.deepEqual(
     getChildren('an', members).map((member) => member.id),
     ['binh', 'chi', 'dung'],
+  );
+});
+
+void test('couples place male members on the left and female members on the right', () => {
+  const female = members.find((member) => member.id === 'chi')!;
+  const male = members.find((member) => member.id === 'hoa')!;
+
+  assert.deepEqual(
+    orderCoupleMembers(female, male).map((member) => member.id),
+    ['hoa', 'chi'],
+  );
+  assert.deepEqual(
+    orderCoupleMembers(male, female).map((member) => member.id),
+    ['hoa', 'chi'],
   );
 });
 

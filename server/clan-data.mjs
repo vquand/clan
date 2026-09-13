@@ -90,6 +90,7 @@ export function assembleClanData({
       fullName: row.full_name,
       familiarName: row.familiar_name ?? undefined,
       gender: row.gender,
+      clanRelation: row.clan_relation,
       generation: generations.get(id) ?? 0,
       birthYear: asNumber(row.birth_year),
       birthDate: asDate(row.birth_date),

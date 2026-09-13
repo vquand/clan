@@ -16,6 +16,7 @@ void test('accepts a valid clan dataset supplied at build time', () => {
         id: 'founder',
         fullName: 'Private Example',
         gender: 'other',
+        clanRelation: 'lineage',
         generation: 1,
         branch: 'Main branch',
         parentIds: [],
