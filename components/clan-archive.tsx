@@ -710,6 +710,7 @@ function CalendarView({
   locale: Locale;
 }) {
   const [visible, setVisible] = useState({ year: 2026, month: 8 });
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<{
     event: ClanEvent;
     date: string;
@@ -727,7 +728,11 @@ function CalendarView({
     .filter((item): item is { event: ClanEvent; date: string } =>
       Boolean(item.date),
     );
+  const displayedEvents = selectedDate
+    ? datedEvents.filter((item) => item.date === selectedDate)
+    : datedEvents;
   function moveMonth(offset: number) {
+    setSelectedDate(null);
     setVisible((current) => {
       const date = new Date(current.year, current.month + offset, 1);
       return { year: date.getFullYear(), month: date.getMonth() };
@@ -757,6 +762,7 @@ function CalendarView({
             variant="outline"
             onClick={() => {
               const now = new Date();
+              setSelectedDate(null);
               setVisible({ year: now.getFullYear(), month: now.getMonth() });
             }}
           >
@@ -796,27 +802,42 @@ function CalendarView({
               String(date.getDate()).padStart(2, '0'),
             ].join('-');
             const dayEvents = datedEvents.filter((item) => item.date === iso);
+            const selectDate = () =>
+              setSelectedDate((current) => (current === iso ? null : iso));
             return (
               <div
                 className={
-                  inMonth ? 'calendar-day' : 'calendar-day calendar-day--muted'
+                  `${inMonth ? 'calendar-day' : 'calendar-day calendar-day--muted'}${
+                    selectedDate === iso ? ' calendar-day--selected' : ''
+                  }`
                 }
                 key={iso}
               >
-                <time dateTime={iso}>{date.getDate()}</time>
-                <span className="lunar-chip" aria-label={formatLunarDate(iso, locale)}>
-                  {(() => {
-                    const lunar = getLunarDate(date);
-                    return `${lunar.day}/${lunar.month}${lunar.isLeapMonth ? '*' : ''}`;
-                  })()}
-                </span>
+                <button
+                  type="button"
+                  className="calendar-day__select"
+                  aria-label={formatDate(iso, locale)}
+                  aria-pressed={selectedDate === iso}
+                  onClick={selectDate}
+                >
+                  <time dateTime={iso}>{date.getDate()}</time>
+                  <span className="lunar-chip" aria-label={formatLunarDate(iso, locale)}>
+                    {(() => {
+                      const lunar = getLunarDate(date);
+                      return `${lunar.day}/${lunar.month}${lunar.isLeapMonth ? '*' : ''}`;
+                    })()}
+                  </span>
+                </button>
                 {dayEvents.map(({ event }) => (
                   <button
                     type="button"
                     className={`day-event day-event--${event.type}`}
                     key={event.id}
                     title={event.title}
-                    onClick={() => setSelectedEvent({ event, date: iso })}
+                    onClick={(eventToClick) => {
+                      eventToClick.stopPropagation();
+                      setSelectedEvent({ event, date: iso });
+                    }}
                   >
                     <span aria-hidden="true">{event.calendar === 'lunar' ? '🌙' : '☀️'}</span>
                     <span className="day-event__title">{event.title}</span>
@@ -830,13 +851,29 @@ function CalendarView({
           className="event-list"
           aria-label={translate(locale, 'importantDatesLabel')}
         >
-          <div>
+          <div className="event-list__heading">
             <p className="eyebrow">
-              {translate(locale, 'yearEyebrow', { year: visible.year })}
+              {selectedDate
+                ? translate(locale, 'selectedDay')
+                : translate(locale, 'yearEyebrow', { year: visible.year })}
             </p>
-            <h3>{translate(locale, 'memorableDays')}</h3>
+            <h3>
+              {selectedDate
+                ? formatDate(selectedDate, locale)
+                : translate(locale, 'memorableDays')}
+            </h3>
+            {selectedDate && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedDate(null)}
+              >
+                {translate(locale, 'showAllDates')}
+              </Button>
+            )}
           </div>
-          {datedEvents.map(({ event, date }) => (
+          {displayedEvents.map(({ event, date }) => (
             <button
               className="event-card"
               key={event.id}
@@ -864,9 +901,12 @@ function CalendarView({
               </div>
             </button>
           ))}
-          {!datedEvents.length && (
+          {!displayedEvents.length && (
             <p className="event-empty">
-              {translate(locale, 'noVerifiedEvents')}
+              {translate(
+                locale,
+                selectedDate ? 'noEventsForDay' : 'noVerifiedEvents',
+              )}
             </p>
           )}
         </aside>

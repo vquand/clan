@@ -234,6 +234,54 @@ test('truncates long event names inside calendar cards', async ({ page }) => {
   expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
 });
 
+test('filters the event list when a calendar day is selected', async ({ page }) => {
+  const now = new Date();
+  const eventForFirstDay = 'Event on the first day';
+  const eventForSecondDay = 'Event on the second day';
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({
+      json: {
+        members,
+        events: [
+          {
+            id: 'first-day-event',
+            title: eventForFirstDay,
+            type: 'gathering',
+            calendar: 'solar',
+            day: 1,
+            month: now.getMonth() + 1,
+            recurrence: 'annual',
+            relatedMemberIds: [],
+            location: '',
+          },
+          {
+            id: 'second-day-event',
+            title: eventForSecondDay,
+            type: 'gathering',
+            calendar: 'solar',
+            day: 2,
+            month: now.getMonth() + 1,
+            recurrence: 'annual',
+            relatedMemberIds: [],
+            location: '',
+          },
+        ],
+      },
+    });
+  });
+
+  await page.goto('/');
+  const firstDay = page.locator('.calendar-day').filter({ hasText: eventForFirstDay });
+  await firstDay.locator('.calendar-day__select').click();
+  await expect(page.locator('.calendar-day--selected')).toHaveCount(1);
+  await expect(page.locator('.event-list .event-card')).toHaveCount(1);
+  await expect(page.locator('.event-list')).toContainText(eventForFirstDay);
+  await expect(page.locator('.event-list')).not.toContainText(eventForSecondDay);
+
+  await page.getByRole('button', { name: 'Xem tất cả ngày' }).click();
+  await expect(page.locator('.event-list .event-card')).toHaveCount(2);
+});
+
 test('opens the configured clan record while data is loading', async ({
   page,
 }, testInfo) => {
