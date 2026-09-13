@@ -63,9 +63,9 @@ import {
 import { AdminApiError, loginAdmin } from '@/lib/admin-api';
 
 const tabs = [
-  { value: 'members', labelKey: 'tabMembers', icon: Users },
-  { value: 'tree', labelKey: 'tabTree', icon: TreePine },
   { value: 'calendar', labelKey: 'tabCalendar', icon: CalendarDays },
+  { value: 'tree', labelKey: 'tabTree', icon: TreePine },
+  { value: 'members', labelKey: 'tabMembers', icon: Users },
 ] as const;
 
 function ArchiveAdminAccess({ locale }: { locale: Locale }) {
@@ -890,7 +890,7 @@ export function ClanArchive({
   events: ClanEvent[];
   isSampleData?: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState('members');
+  const [activeTab, setActiveTab] = useState('calendar');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [readingSize, setReadingSize] = useState<ReadingSize>('standard');

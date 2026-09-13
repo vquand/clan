@@ -23,6 +23,14 @@ test('member search, profile, tree, and calendar work without browser errors', a
   await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
   await expect(page).toHaveTitle('Họ Đỗ Văn');
   await expect(page.getByRole('heading', { name: 'Họ Đỗ Văn' })).toBeVisible();
+  await expect(page.getByRole('tab').nth(0)).toHaveText('Lịch họ');
+  await expect(page.getByRole('tab').nth(1)).toHaveText('Gia phả');
+  await expect(page.getByRole('tab').nth(2)).toHaveText('Thành viên');
+  await expect(
+    page.getByRole('heading', { name: 'Ngày đáng nhớ' }),
+  ).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Thành viên' }).click();
   await expect(
     page.getByRole('heading', { name: '10 thành viên · 3 thế hệ' }),
   ).toBeVisible();
@@ -310,6 +318,7 @@ test('uses API records without rendering the bundled sample first', async ({
   });
 
   await page.goto('/');
+  await page.getByRole('tab', { name: 'Thành viên' }).click();
   await expect(
     page.getByRole('heading', { name: '1 thành viên · 1 thế hệ' }),
   ).toBeVisible();
@@ -370,6 +379,7 @@ test('calculates age for API members without an explicit life status', async ({
   });
 
   await page.goto('/');
+  await page.getByRole('tab', { name: 'Thành viên' }).click();
   await expect(
     page.getByRole('button', { name: /Member With Birth Year/ }),
   ).toContainText('Tuổi: 40');
@@ -400,6 +410,7 @@ test('shows a retryable error instead of mock members when the API fails', async
   await expect(page.locator('.member-card')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Thử lại' }).click();
+  await page.getByRole('tab', { name: 'Thành viên' }).click();
   await expect(
     page.getByRole('heading', { name: '10 thành viên · 3 thế hệ' }),
   ).toBeVisible();
