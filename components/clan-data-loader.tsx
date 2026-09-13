@@ -33,13 +33,11 @@ function DataLoadState({
         ) : (
           <AlertTriangle aria-hidden />
         )}
-        <h1>
-          {isLoading ? 'Đang tải gia phả' : 'Không thể tải dữ liệu gia phả'}
-        </h1>
+        <h1>{isLoading ? 'Đang tải gia phả…' : 'Chưa tải được gia phả'}</h1>
         <p>
           {isLoading
-            ? 'Đang kết nối đến cơ sở dữ liệu…'
-            : 'Máy chủ dữ liệu hiện chưa phản hồi. Vui lòng thử lại.'}
+            ? 'Đang tải thông tin…'
+            : 'Chưa kết nối được. Bạn thử lại nhé.'}
         </p>
         {!isLoading && (
           <Button type="button" onClick={onRetry}>

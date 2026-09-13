@@ -46,7 +46,7 @@ import {
   translate,
   weekdayLabels,
 } from '@/lib/i18n';
-import { formatMemberAge } from '@/lib/member-display';
+import { formatMemberAge, getMemberAvatarVariant } from '@/lib/member-display';
 import {
   normalizeReadingSize,
   READING_SIZE_STORAGE_KEY,
@@ -58,14 +58,6 @@ const tabs = [
   { value: 'tree', labelKey: 'tabTree', icon: TreePine },
   { value: 'calendar', labelKey: 'tabCalendar', icon: CalendarDays },
 ] as const;
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .slice(-2)
-    .map((part) => part[0])
-    .join('');
-}
 
 function formatDate(date: string | undefined, locale: Locale) {
   if (!date) return translate(locale, 'unknown');
@@ -83,18 +75,32 @@ function MemberAvatar({
   member: Member;
   small?: boolean;
 }) {
+  const variant = getMemberAvatarVariant(member);
   return (
     <span
-      className={small ? 'member-avatar member-avatar--small' : 'member-avatar'}
+      className={
+        small
+          ? `member-avatar member-avatar--small member-avatar--${variant}`
+          : `member-avatar member-avatar--${variant}`
+      }
       aria-hidden="true"
     >
-      {initials(member.fullName)}
+      <Image
+        className="member-avatar__image"
+        src={`/people-icons/${variant}.png`}
+        alt=""
+        width={384}
+        height={512}
+        unoptimized
+      />
     </span>
   );
 }
 
 function memberCardClassName(baseClass: string, member: Member) {
-  return `${baseClass} ${baseClass}--${member.gender}`;
+  const memorialClass =
+    member.status === 'deceased' ? ` ${baseClass}--deceased` : '';
+  return `${baseClass} ${baseClass}--${member.gender}${memorialClass}`;
 }
 
 function MemberAge({ member, locale }: { member: Member; locale: Locale }) {
@@ -131,6 +137,10 @@ function MemberLegend({
       <span>
         <i className="legend-border legend-border--female" />
         {translate(locale, 'genderFemale')}
+      </span>
+      <span>
+        <i className="legend-border legend-border--memorial" />
+        {translate(locale, 'legendMemorialBorder')}
       </span>
       <span>
         <code>[97]</code>

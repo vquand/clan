@@ -22,7 +22,7 @@ test('member search, profile, tree, and calendar work without browser errors', a
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
   await expect(
-    page.getByRole('heading', { name: '10 thành viên qua 3 thế hệ' }),
+    page.getByRole('heading', { name: '10 thành viên · 3 thế hệ' }),
   ).toBeVisible();
   await expect(page.locator('.member-card')).toHaveCount(10);
   await expect(
@@ -58,9 +58,7 @@ test('member search, profile, tree, and calendar work without browser errors', a
   await page.getByRole('button', { name: 'Close' }).click();
 
   await page.getByRole('tab', { name: 'Gia phả' }).click();
-  await expect(
-    page.getByRole('heading', { name: '3 thế hệ trong phả hệ' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: '3 thế hệ' })).toBeVisible();
   await expect(page.locator('.family-tree')).toContainText('Nguyễn Minh Khánh');
   await expect(page.locator('.tree-roots > li')).toHaveCount(1);
   await expect(
@@ -185,13 +183,13 @@ test('uses API records without rendering the bundled sample first', async ({
 
   await page.goto('/');
   await expect(
-    page.getByRole('heading', { name: '1 thành viên qua 1 thế hệ' }),
+    page.getByRole('heading', { name: '1 thành viên · 1 thế hệ' }),
   ).toBeVisible();
   await expect(page.locator('.member-card')).toHaveCount(1);
   await expect(page.getByText('Database Member')).toBeVisible();
   await expect(page.getByText('Nguyễn Văn An')).toHaveCount(0);
   await expect(
-    page.getByText('Dữ liệu được tải trực tiếp từ cơ sở dữ liệu gia phả.'),
+    page.getByText('Thông tin lấy từ gia phả gia đình.'),
   ).toBeVisible();
 });
 
@@ -210,12 +208,12 @@ test('shows a retryable error instead of mock members when the API fails', async
 
   await page.goto('/');
   await expect(
-    page.getByRole('alert').getByText('Không thể tải dữ liệu gia phả'),
+    page.getByRole('alert').getByText('Chưa tải được gia phả'),
   ).toBeVisible();
   await expect(page.locator('.member-card')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Thử lại' }).click();
   await expect(
-    page.getByRole('heading', { name: '10 thành viên qua 3 thế hệ' }),
+    page.getByRole('heading', { name: '10 thành viên · 3 thế hệ' }),
   ).toBeVisible();
 });

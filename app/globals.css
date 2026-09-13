@@ -53,6 +53,11 @@
   --male-border: oklch(0.22 0.012 50);
   --female-border: oklch(0.57 0.17 8);
   --unknown-gender-border: oklch(0.58 0.025 62);
+  --memorial-border: oklch(0.48 0.025 62);
+  --male-avatar-background: oklch(0.9 0.07 245);
+  --female-avatar-background: oklch(0.94 0.06 12);
+  --neutral-avatar-background: oklch(0.93 0.02 80);
+  --unknown-avatar-background: oklch(0.9 0.025 245);
 }
 
 @layer base {
@@ -423,6 +428,11 @@
   --member-border-color: var(--unknown-gender-border);
   border-style: dashed;
 }
+.member-card--deceased,
+.person-pill--deceased {
+  border-style: double;
+  border-width: 3px;
+}
 .member-card:focus-visible,
 .person-pill:focus-visible {
   outline: 3px solid oklch(0.65 0.11 49 / 0.45);
@@ -434,18 +444,36 @@
   height: 3.5rem;
   flex: 0 0 auto;
   place-items: center;
-  color: var(--primary);
-  font-family: Georgia, serif;
-  font-size: 1.05rem;
-  font-weight: 700;
-  background: linear-gradient(145deg, oklch(0.92 0.07 81), oklch(0.85 0.08 75));
+  overflow: hidden;
+  background: var(--neutral-avatar-background);
   border: 1px solid oklch(0.78 0.075 69);
-  border-radius: 50%;
+  border-radius: 0.85rem;
+}
+.member-avatar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+.member-avatar--male,
+.member-avatar--young-man,
+.member-avatar--toddler-boy {
+  background: var(--male-avatar-background);
+}
+.member-avatar--female,
+.member-avatar--young-woman,
+.member-avatar--toddler-girl {
+  background: var(--female-avatar-background);
+}
+.member-avatar--baby {
+  background: var(--neutral-avatar-background);
+}
+.member-avatar--unknown {
+  background: var(--unknown-avatar-background);
 }
 .member-avatar--small {
   width: 2.3rem;
   height: 2.3rem;
-  font-size: 0.78rem;
 }
 .member-card__body {
   display: flex;
@@ -675,6 +703,11 @@
 }
 .legend-border--female {
   border-color: var(--female-border);
+}
+.legend-border--memorial {
+  border-color: var(--memorial-border);
+  border-style: double;
+  border-width: 3px;
 }
 .legend-line {
   width: 1.3rem;

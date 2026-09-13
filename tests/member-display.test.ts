@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { formatMemberAge } from '../lib/member-display.ts';
+import {
+  formatMemberAge,
+  getMemberAvatarVariant,
+} from '../lib/member-display.ts';
 import type { Member } from '../data/types.ts';
 
 const baseMember: Member = {
@@ -65,5 +68,71 @@ void test('uses year precision when only the birth year is known', () => {
       deathDate: '2024-04-01',
     }),
     '[97]',
+  );
+});
+
+void test('selects people icons from gender and age', () => {
+  const referenceDate = new Date('2026-09-13T00:00:00Z');
+  assert.equal(
+    getMemberAvatarVariant(
+      { ...baseMember, gender: 'male', birthYear: 1980, status: 'living' },
+      referenceDate,
+    ),
+    'male',
+  );
+  assert.equal(
+    getMemberAvatarVariant(
+      { ...baseMember, gender: 'female', birthYear: 1980, status: 'living' },
+      referenceDate,
+    ),
+    'female',
+  );
+  assert.equal(
+    getMemberAvatarVariant(
+      { ...baseMember, gender: 'male', birthYear: 2005, status: 'living' },
+      referenceDate,
+    ),
+    'young-man',
+  );
+  assert.equal(
+    getMemberAvatarVariant(
+      { ...baseMember, gender: 'female', birthYear: 2005, status: 'living' },
+      referenceDate,
+    ),
+    'young-woman',
+  );
+  assert.equal(
+    getMemberAvatarVariant(
+      { ...baseMember, gender: 'male', birthYear: 2018, status: 'living' },
+      referenceDate,
+    ),
+    'toddler-boy',
+  );
+  assert.equal(
+    getMemberAvatarVariant(
+      { ...baseMember, gender: 'female', birthYear: 2018, status: 'living' },
+      referenceDate,
+    ),
+    'toddler-girl',
+  );
+  assert.equal(
+    getMemberAvatarVariant(
+      {
+        ...baseMember,
+        gender: 'female',
+        birthDate: '2025-01-01',
+        status: 'living',
+      },
+      referenceDate,
+    ),
+    'baby',
+  );
+  assert.equal(
+    getMemberAvatarVariant({ ...baseMember, gender: 'other' }, referenceDate),
+    'unknown',
+  );
+  assert.equal(
+    getMemberAvatarVariant({ ...baseMember, gender: 'male' }, referenceDate),
+    'male',
   );
 });

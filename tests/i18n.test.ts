@@ -22,7 +22,7 @@ void test('English and French interface translations are available', () => {
 void test('translation placeholders are interpolated', () => {
   assert.equal(
     translate('en', 'memberCount', { count: 10, generations: 3 }),
-    '10 members across 3 generations',
+    '10 people · 3 generations',
   );
 });
 

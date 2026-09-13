@@ -33,6 +33,34 @@ function calculateMemberAge(member: Member, referenceDate: Date) {
   return years >= 0 ? years : undefined;
 }
 
+export type MemberAvatarVariant =
+  | 'male'
+  | 'female'
+  | 'young-man'
+  | 'young-woman'
+  | 'toddler-boy'
+  | 'toddler-girl'
+  | 'baby'
+  | 'unknown';
+
+export function getMemberAvatarVariant(
+  member: Member,
+  referenceDate = new Date(),
+): MemberAvatarVariant {
+  if (member.gender === 'other') return 'unknown';
+
+  const age = calculateMemberAge(member, referenceDate);
+  if (age !== undefined) {
+    if (age < 3) return 'baby';
+    if (age < 12)
+      return member.gender === 'male' ? 'toddler-boy' : 'toddler-girl';
+    if (age <= 25)
+      return member.gender === 'male' ? 'young-man' : 'young-woman';
+  }
+
+  return member.gender;
+}
+
 export function formatMemberAge(member: Member, referenceDate = new Date()) {
   const age = calculateMemberAge(member, referenceDate);
   if (member.status === 'deceased') {
