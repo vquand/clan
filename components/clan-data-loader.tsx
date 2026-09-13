@@ -35,12 +35,16 @@ function DataLoadState({
         ) : (
           <AlertTriangle aria-hidden />
         )}
-        <h1>{isLoading ? 'Đang mở gia phả' : 'Chưa tải được gia phả'}</h1>
-        <p>
+        <h1>
           {isLoading
             ? clanDisplayName
               ? `Họ ${clanDisplayName}`
               : 'Gia phả dòng họ'
+            : 'Chưa tải được gia phả'}
+        </h1>
+        <p>
+          {isLoading
+            ? 'Đang mở gia phả'
             : 'Chưa kết nối được. Bạn thử lại nhé.'}
         </p>
         {!isLoading && (

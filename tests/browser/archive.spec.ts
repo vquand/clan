@@ -314,10 +314,10 @@ test('opens the configured clan record while data is loading', async ({
   });
 
   await page.goto('/');
-  await expect(
-    page.getByRole('heading', { name: 'Đang mở gia phả' }),
-  ).toBeVisible();
-  await expect(page.getByText('Họ Đỗ Văn', { exact: true })).toBeVisible();
+  const loadingState = page.locator('.data-load-state');
+  await expect(loadingState).toBeVisible();
+  await expect(loadingState.locator('h1')).toHaveText('Họ Đỗ Văn');
+  await expect(loadingState.locator('p')).toHaveText('Đang mở gia phả');
   await page.screenshot({
     path: testInfo.outputPath('loading.png'),
     fullPage: true,
