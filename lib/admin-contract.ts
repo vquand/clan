@@ -15,6 +15,9 @@ export interface AdminMemberInput {
   ageGroup?: 'senior';
   avatarStyle?: 'default' | 'style-1' | 'style-2' | 'style-3';
   avatarImageUrl?: string;
+  isClanHead?: boolean;
+  isPreviousClanHead?: boolean;
+  confirmClanHeadChange?: boolean;
   deathAnniversaryLunarDay?: number | string;
   deathAnniversaryLunarMonth?: number | string;
   hometown?: string;

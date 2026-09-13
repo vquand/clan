@@ -470,6 +470,7 @@
   outline-offset: 2px;
 }
 .member-avatar {
+  position: relative;
   display: grid;
   width: 3.5rem;
   height: 3.5rem;
@@ -485,6 +486,30 @@
   height: 100%;
   object-fit: contain;
   object-position: center bottom;
+}
+.member-avatar__head-marker {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  place-items: center;
+  color: var(--primary);
+  font-family: Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 0 var(--card);
+}
+.member-avatar__head-marker--current {
+  top: 0.1rem;
+  right: 0.1rem;
+}
+.member-avatar__head-marker--previous {
+  bottom: 0.1rem;
+  left: 50%;
+  color: var(--muted-foreground);
+  transform: translateX(-50%);
 }
 .member-avatar--male,
 .member-avatar--young-man,
@@ -1338,6 +1363,9 @@
   background: var(--muted);
   border: 1px solid var(--border);
   border-radius: 0.55rem;
+}
+.admin-record-avatar {
+  position: relative;
 }
 .admin-record-avatar img {
   width: 100%;

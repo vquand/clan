@@ -118,6 +118,18 @@ export function AdminAvatarPicker({
           height={116}
           unoptimized
         />
+        {(member.isClanHead || member.isPreviousClanHead) && (
+          <span
+            className={`member-avatar__head-marker ${
+              member.isClanHead
+                ? 'member-avatar__head-marker--current'
+                : 'member-avatar__head-marker--previous'
+            }`}
+            aria-hidden="true"
+          >
+            *
+          </span>
+        )}
       </PopoverTrigger>
       <PopoverContent
         className="admin-avatar-popover"

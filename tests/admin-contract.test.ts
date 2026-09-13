@@ -10,6 +10,10 @@ import {
   normalizeMemberInput,
   validateParentGraph,
 } from '../server/admin-validation.mjs';
+import {
+  createClanHeadChangeEvent,
+  resolveClanHeadChange,
+} from '../server/clan-head.mjs';
 
 void test('creates and verifies an expiring admin session token', () => {
   const token = createSessionToken('admin', 'test-secret', 1_000);
@@ -49,6 +53,8 @@ void test('normalizes a member with editable relationship and avatar fields', ()
       age_group: null,
       avatar_style: 'style-2',
       avatar_image_url: '/portraits/an.jpg',
+      is_clan_head: false,
+      is_previous_clan_head: false,
       death_anniversary_lunar_day: null,
       death_anniversary_lunar_month: null,
       hometown: null,
@@ -56,6 +62,187 @@ void test('normalizes a member with editable relationship and avatar fields', ()
       biography: null,
       parentIds: ['parent-1'],
       spouseIds: ['spouse-1'],
+    },
+  );
+});
+
+void test('promotes a replacement and records the outgoing clan head', () => {
+  assert.deepEqual(
+    resolveClanHeadChange({
+      currentMember: {
+        id: 'head-a',
+        isClanHead: false,
+        isPreviousClanHead: false,
+        status: 'living',
+      },
+      currentHead: {
+        id: 'head-b',
+        fullName: 'Head B',
+        isClanHead: true,
+        isPreviousClanHead: false,
+        status: 'living',
+      },
+      requestedMember: {
+        id: 'head-a',
+        status: 'living',
+        isClanHead: true,
+        isPreviousClanHead: false,
+      },
+      confirmHeadChange: true,
+    }),
+    {
+      isClanHead: true,
+      isPreviousClanHead: false,
+      previousHeadId: 'head-b',
+      newHeadId: 'head-a',
+      headChanged: true,
+    },
+  );
+});
+
+void test('builds a solar event for a clan head change', () => {
+  assert.deepEqual(
+    createClanHeadChangeEvent({
+      oldHead: { id: 'head-b', fullName: 'Head B' },
+      newHead: { id: 'head-a', fullName: 'Head A' },
+      date: { day: 13, month: 9, year: 2026 },
+    }),
+    {
+      title: 'Thay đổi trưởng họ',
+      type: 'clan-ceremony',
+      calendar: 'solar',
+      day: 13,
+      month: 9,
+      recurrence: 'once',
+      event_year: 2026,
+      location: '',
+      description: 'Trưởng họ được chuyển từ Head B sang Head A.',
+      relatedMemberIds: ['head-b', 'head-a'],
+    },
+  );
+});
+
+void test('rejects a deceased person as a new clan head', () => {
+  assert.throws(
+    () =>
+      resolveClanHeadChange({
+        currentMember: null,
+        currentHead: null,
+        requestedMember: {
+          id: 'deceased',
+          status: 'deceased',
+          isClanHead: true,
+          isPreviousClanHead: false,
+        },
+        confirmHeadChange: false,
+      }),
+    (error: unknown) => {
+      if (!(error instanceof Error)) return false;
+      return (error as Error & { status?: number }).status === 422;
+    },
+  );
+});
+
+void test('automatically marks a current head as previous when recorded deceased', () => {
+  assert.deepEqual(
+    resolveClanHeadChange({
+      currentMember: {
+        id: 'head-a',
+        isClanHead: true,
+        isPreviousClanHead: false,
+        status: 'living',
+      },
+      currentHead: {
+        id: 'head-a',
+        fullName: 'Head A',
+        isClanHead: true,
+        isPreviousClanHead: false,
+        status: 'living',
+      },
+      requestedMember: {
+        id: 'head-a',
+        status: 'deceased',
+        isClanHead: true,
+        isPreviousClanHead: false,
+      },
+      confirmHeadChange: false,
+    }),
+    {
+      isClanHead: false,
+      isPreviousClanHead: true,
+      previousHeadId: 'head-a',
+      newHeadId: null,
+      headChanged: true,
+    },
+  );
+});
+
+void test('requires confirmation before replacing another current clan head', () => {
+  assert.throws(
+    () =>
+      resolveClanHeadChange({
+        currentMember: null,
+        currentHead: {
+          id: 'head-b',
+          fullName: 'Head B',
+          isClanHead: true,
+          isPreviousClanHead: false,
+          status: 'living',
+        },
+        requestedMember: {
+          id: 'head-a',
+          status: 'living',
+          isClanHead: true,
+          isPreviousClanHead: false,
+        },
+        confirmHeadChange: false,
+      }),
+    (error: unknown) => {
+      if (!(error instanceof Error)) return false;
+      const typedError = error as Error & {
+        status?: number;
+        code?: string;
+        details?: { currentHeadId?: string };
+      };
+      return (
+        typedError.status === 409 &&
+        typedError.code === 'CLAN_HEAD_CONFLICT' &&
+        typedError.details?.currentHeadId === 'head-b'
+      );
+    },
+  );
+});
+
+void test('preserves the current head when another member is marked previous', () => {
+  assert.deepEqual(
+    resolveClanHeadChange({
+      currentMember: {
+        id: 'head-a',
+        isClanHead: false,
+        isPreviousClanHead: false,
+        status: 'deceased',
+      },
+      currentHead: {
+        id: 'head-b',
+        fullName: 'Head B',
+        isClanHead: true,
+        isPreviousClanHead: false,
+        status: 'living',
+      },
+      requestedMember: {
+        id: 'head-a',
+        status: 'deceased',
+        isClanHead: false,
+        isPreviousClanHead: true,
+      },
+      confirmHeadChange: false,
+    }),
+    {
+      isClanHead: false,
+      isPreviousClanHead: true,
+      previousHeadId: null,
+      newHeadId: 'head-b',
+      headChanged: false,
     },
   );
 });

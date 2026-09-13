@@ -51,6 +51,9 @@ export function isMember(value: unknown): value is Member {
     (value.avatarImageUrl === undefined ||
       (typeof value.avatarImageUrl === 'string' &&
         value.avatarImageUrl.trim() !== '')) &&
+    (value.isClanHead === undefined || typeof value.isClanHead === 'boolean') &&
+    (value.isPreviousClanHead === undefined ||
+      typeof value.isPreviousClanHead === 'boolean') &&
     (value.status === undefined ||
       (typeof value.status === 'string' &&
         ['living', 'deceased'].includes(value.status))) &&

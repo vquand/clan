@@ -65,6 +65,12 @@ function requiredEnumValue(value, field, allowed) {
   return result;
 }
 
+function booleanValue(value, field, defaultValue = false) {
+  if (value === undefined || value === null) return defaultValue;
+  if (typeof value !== 'boolean') throw new Error(`${field} must be a boolean`);
+  return value;
+}
+
 function normalizedIds(value, field) {
   if (value === undefined || value === null) return [];
   if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
@@ -131,6 +137,15 @@ export function normalizeMemberInput(input, { memberId } = {}) {
     throw new Error('Lunar anniversary day and month must be provided together');
   }
 
+  const isClanHead = booleanValue(input.isClanHead, 'isClanHead');
+  const isPreviousClanHead = booleanValue(
+    input.isPreviousClanHead,
+    'isPreviousClanHead',
+  );
+  if (isClanHead && isPreviousClanHead) {
+    throw new Error('A member cannot be both current and previous clan head');
+  }
+
   return {
     full_name: requiredString(input.fullName, 'fullName', 240),
     familiar_name: optionalString(input.familiarName, 'familiarName', 240),
@@ -146,6 +161,8 @@ export function normalizeMemberInput(input, { memberId } = {}) {
     age_group: enumValue(input.ageGroup, 'ageGroup', ageGroups),
     avatar_style: enumValue(input.avatarStyle, 'avatarStyle', avatarStyles, 'default'),
     avatar_image_url: imageUrl(input.avatarImageUrl),
+    is_clan_head: isClanHead,
+    is_previous_clan_head: isPreviousClanHead,
     death_anniversary_lunar_day: lunarDay,
     death_anniversary_lunar_month: lunarMonth,
     hometown: optionalString(input.hometown, 'hometown'),

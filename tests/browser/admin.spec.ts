@@ -13,6 +13,9 @@ function initialData(): AdminData {
         gender: 'male',
         clanRelation: 'lineage',
         generation: 0,
+        status: 'living',
+        isClanHead: true,
+        isPreviousClanHead: false,
         parentIds: [],
         spouseIds: [],
       },
@@ -22,6 +25,9 @@ function initialData(): AdminData {
         gender: 'female',
         clanRelation: 'lineage',
         generation: 1,
+        status: 'living',
+        isClanHead: false,
+        isPreviousClanHead: false,
         parentIds: [],
         spouseIds: [],
       },
@@ -58,12 +64,71 @@ test('admin can sign in and manage relationships and unassigned events', async (
   });
   await page.route(`**/api/admin/members/${childId}`, async (route) => {
     const body = route.request().postDataJSON();
+    const currentMember = data.members.find((member) => member.id === childId);
+    const becameCurrentHead = body.isClanHead === true && body.status !== 'deceased';
+    const becameDeceasedHead =
+      currentMember?.isClanHead === true && body.status === 'deceased';
+    if (becameCurrentHead) {
+      data = {
+        ...data,
+        members: data.members.map((member) =>
+          member.id === parentId
+            ? { ...member, isClanHead: false, isPreviousClanHead: true }
+            : member,
+        ),
+        events: [
+          ...data.events,
+          {
+            id: '10000000-0000-4000-8000-000000000002',
+            title: 'Thay đổi trưởng họ',
+            type: 'clan-ceremony',
+            calendar: 'solar',
+            day: 13,
+            month: 9,
+            recurrence: 'once',
+            year: 2026,
+            relatedMemberIds: [parentId, childId],
+            location: '',
+            description: 'Trưởng họ được chuyển từ Founder sang Child.',
+          },
+        ],
+      };
+    }
     data = {
       ...data,
       members: data.members.map((member) =>
-        member.id === childId ? { ...member, ...body } : member,
+        member.id === childId
+          ? {
+              ...member,
+              ...body,
+              ...(becameDeceasedHead
+                ? { isClanHead: false, isPreviousClanHead: true }
+                : {}),
+            }
+          : member,
       ),
     };
+    if (becameDeceasedHead) {
+      data = {
+        ...data,
+        events: [
+          ...data.events,
+          {
+            id: '10000000-0000-4000-8000-000000000003',
+            title: 'Thay đổi trưởng họ',
+            type: 'clan-ceremony',
+            calendar: 'solar',
+            day: 13,
+            month: 9,
+            recurrence: 'once',
+            year: 2026,
+            relatedMemberIds: [childId],
+            location: '',
+            description: 'Child được ghi nhận là cựu trưởng họ.',
+          },
+        ],
+      };
+    }
     await route.fulfill({
       json: data.members.find((member) => member.id === childId),
     });
@@ -146,6 +211,49 @@ test('admin can sign in and manage relationships and unassigned events', async (
   await page.getByLabel('Parents').selectOption(parentId);
   await page.getByRole('button', { name: 'Save member' }).click();
   await expect(page.getByText('1 parent')).toBeVisible();
+
+  await page
+    .locator('.admin-record')
+    .filter({ hasText: 'Child' })
+    .getByRole('button', { name: 'Edit' })
+    .click();
+  await page.getByLabel('Clan head status').selectOption('current');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Save member' }).click();
+  expect(data.members.find((member) => member.id === childId)).toMatchObject({
+    isClanHead: true,
+    isPreviousClanHead: false,
+  });
+  expect(data.members.find((member) => member.id === parentId)).toMatchObject({
+    isClanHead: false,
+    isPreviousClanHead: true,
+  });
+  expect(data.events.at(-1)?.title).toBe('Thay đổi trưởng họ');
+
+  await page
+    .locator('.admin-record')
+    .filter({ hasText: 'Child' })
+    .getByRole('button', { name: 'Edit' })
+    .click();
+  await page.getByLabel('Life status').selectOption('deceased');
+  await page.getByRole('button', { name: 'Save member' }).click();
+  expect(data.members.find((member) => member.id === childId)).toMatchObject({
+    isClanHead: false,
+    isPreviousClanHead: true,
+  });
+  expect(data.events).toHaveLength(2);
+
+  await page
+    .locator('.admin-record')
+    .filter({ hasText: 'Child' })
+    .getByRole('button', { name: 'Edit' })
+    .click();
+  await expect(page.getByLabel('Clan head status')).toHaveValue('previous');
+  await page.getByLabel('Clan head status').selectOption('');
+  await page.getByRole('button', { name: 'Save member' }).click();
+  expect(data.members.find((member) => member.id === childId)?.isPreviousClanHead).toBe(
+    false,
+  );
 
   await page.getByRole('tab', { name: 'Events' }).click();
   await page.getByRole('button', { name: 'Add event' }).click();

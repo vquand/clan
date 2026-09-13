@@ -30,6 +30,7 @@ interface MemberFormState {
   ageAtDeath: string;
   ageAtDeathQualifier: '' | NonNullable<AdminMemberInput['ageAtDeathQualifier']>;
   ageGroup: '' | 'senior';
+  headStatus: '' | 'current' | 'previous';
   avatarStyle: NonNullable<AdminMemberInput['avatarStyle']>;
   avatarImageUrl: string;
   deathAnniversaryLunarDay: string;
@@ -54,6 +55,7 @@ const blankForm: MemberFormState = {
   ageAtDeath: '',
   ageAtDeathQualifier: '',
   ageGroup: '',
+  headStatus: '',
   avatarStyle: 'default',
   avatarImageUrl: '',
   deathAnniversaryLunarDay: '',
@@ -80,6 +82,11 @@ function toForm(member: Member | null): MemberFormState {
     ageAtDeath: member.ageAtDeath?.toString() ?? '',
     ageAtDeathQualifier: member.ageAtDeathQualifier ?? '',
     ageGroup: member.ageGroup ?? '',
+    headStatus: member.isClanHead
+      ? 'current'
+      : member.isPreviousClanHead
+        ? 'previous'
+        : '',
     avatarStyle: member.avatarStyle ?? 'default',
     avatarImageUrl: member.avatarImageUrl ?? '',
     deathAnniversaryLunarDay: member.deathAnniversaryLunar?.day.toString() ?? '',
@@ -110,6 +117,8 @@ function toPayload(form: MemberFormState): AdminMemberInput {
     ageAtDeath: optionalValue(form.ageAtDeath),
     ageAtDeathQualifier: form.ageAtDeathQualifier || undefined,
     ageGroup: form.ageGroup || undefined,
+    isClanHead: form.headStatus === 'current',
+    isPreviousClanHead: form.headStatus === 'previous',
     avatarStyle: form.avatarStyle,
     avatarImageUrl: optionalValue(form.avatarImageUrl),
     deathAnniversaryLunarDay: optionalValue(form.deathAnniversaryLunarDay),
@@ -182,7 +191,26 @@ export function AdminMemberForm({
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onSubmit(toPayload(form));
+    const payload = toPayload(form);
+    const currentHead = members.find(
+      (candidate) =>
+        candidate.isClanHead && candidate.id !== (member?.id ?? null),
+    );
+    if (
+      payload.isClanHead &&
+      currentHead &&
+      !window.confirm(
+        `${currentHead.fullName} is currently the clan head. Make ${form.fullName || 'this member'} the new clan head? ${currentHead.fullName} will be marked as a previous head.`,
+      )
+    ) {
+      return;
+    }
+    await onSubmit({
+      ...payload,
+      ...(payload.isClanHead && currentHead
+        ? { confirmClanHeadChange: true }
+        : {}),
+    });
   }
 
   return (
@@ -251,6 +279,32 @@ export function AdminMemberForm({
             <option value="living">Living</option>
             <option value="deceased">Deceased</option>
           </select>
+        </div>
+        <div className="admin-field">
+          <label htmlFor="member-head-status">Clan head status</label>
+          <select
+            id="member-head-status"
+            className="admin-select"
+            value={form.headStatus}
+            onChange={(event) =>
+              setField(
+                'headStatus',
+                event.target.value as MemberFormState['headStatus'],
+              )
+            }
+          >
+            <option value="">None</option>
+            <option
+              value="current"
+              disabled={form.status === 'deceased' && !member?.isClanHead}
+            >
+              Current clan head
+            </option>
+            <option value="previous">Previous clan head</option>
+          </select>
+          {form.status === 'deceased' && member?.isClanHead && (
+            <small>Saving marks this current head as a previous head.</small>
+          )}
         </div>
         <div className="admin-field">
           <label htmlFor="member-birth-year">Birth year</label>

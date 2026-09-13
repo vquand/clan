@@ -127,6 +127,38 @@ test('member search, profile, tree, and calendar work without browser errors', a
   expect(errors).toEqual([]);
 });
 
+test('shows current and previous clan head markers on member avatars', async ({
+  page,
+}) => {
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({
+      json: {
+        members: members.map((member) => ({
+          ...member,
+          isClanHead: member.fullName === 'Trần Thị Mai',
+          isPreviousClanHead: member.fullName === 'Nguyễn Văn An',
+        })),
+        events: clanEvents,
+      },
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Thành viên' }).click();
+  await expect(
+    page
+      .locator('.member-card')
+      .filter({ hasText: 'Trần Thị Mai' })
+      .locator('.member-avatar__head-marker--current'),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator('.member-card')
+      .filter({ hasText: 'Nguyễn Văn An' })
+      .locator('.member-avatar__head-marker--previous'),
+  ).toBeVisible();
+});
+
 test('opens the configured clan record while data is loading', async ({
   page,
 }, testInfo) => {

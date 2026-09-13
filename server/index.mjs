@@ -21,6 +21,10 @@ import {
   validateParentGraph,
 } from './admin-validation.mjs';
 import { assembleClanData } from './clan-data.mjs';
+import {
+  createClanHeadChangeEvent,
+  resolveClanHeadChange,
+} from './clan-head.mjs';
 
 for (const envFile of ['.env', 'server/.env']) {
   if (existsSync(envFile) && typeof process.loadEnvFile === 'function') {
@@ -88,6 +92,7 @@ export async function getClanData(database = sql) {
           id, full_name, familiar_name, gender, clan_relation, birth_year, birth_date,
           life_status, death_year, death_date, age_at_death, age_at_death_qualifier,
           age_group, avatar_style, avatar_image_url,
+          is_clan_head, is_previous_clan_head,
           death_anniversary_lunar_day,
           death_anniversary_lunar_month, hometown, residence, biography
         FROM members
@@ -229,6 +234,49 @@ function eventAsInput(event) {
   return { ...event, year: event.year };
 }
 
+function todayInClanTimeZone() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .formatToParts(new Date())
+    .reduce((result, part) => {
+      if (part.type !== 'literal') result[part.type] = part.value;
+      return result;
+    }, {});
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+  };
+}
+
+function clanHeadChangeEventQueries(database, { oldHead, newHead }) {
+  const date = todayInClanTimeZone();
+  const eventId = randomUUID();
+  const event = createClanHeadChangeEvent({ oldHead, newHead, date });
+  return [
+    database`
+      INSERT INTO events (
+        id, title, type, calendar, day, month, recurrence, event_year,
+        location, description
+      ) VALUES (
+        ${eventId}::uuid, ${event.title}, ${event.type}, ${event.calendar},
+        ${event.day}, ${event.month}, ${event.recurrence}, ${event.event_year},
+        ${event.location}, ${event.description}
+      )
+    `,
+    ...event.relatedMemberIds.map(
+      (memberId) => database`
+        INSERT INTO event_members (event_id, member_id)
+        VALUES (${eventId}::uuid, ${memberId}::uuid)
+      `,
+    ),
+  ];
+}
+
 async function assertMemberRelationships(database, data, memberId, parentIds) {
   await assertMemberIds(database, parentIds);
   const nextMembers = data.members.filter((member) => member.id !== memberId);
@@ -250,6 +298,7 @@ function memberQueries(database, id, input) {
         id, full_name, familiar_name, gender, clan_relation, birth_year, birth_date,
         life_status, death_year, death_date, age_at_death, age_at_death_qualifier,
         age_group, avatar_style, avatar_image_url,
+        is_clan_head, is_previous_clan_head,
         death_anniversary_lunar_day, death_anniversary_lunar_month,
         hometown, residence, biography
       ) VALUES (
@@ -258,6 +307,7 @@ function memberQueries(database, id, input) {
         ${input.life_status}, ${input.death_year}, ${input.death_date},
         ${input.age_at_death}, ${input.age_at_death_qualifier}, ${input.age_group},
         ${input.avatar_style}, ${input.avatar_image_url},
+        ${input.is_clan_head}, ${input.is_previous_clan_head},
         ${input.death_anniversary_lunar_day}, ${input.death_anniversary_lunar_month},
         ${input.hometown}, ${input.residence}, ${input.biography}
       )
@@ -281,10 +331,48 @@ function memberQueries(database, id, input) {
 async function createMember(database, body) {
   const input = normalizeAdminInput(normalizeMemberInput, body);
   const data = await getClanData(database);
-  await assertMemberRelationships(database, data, 'new-member', input.parentIds);
-  await assertMemberIds(database, input.spouseIds);
   const id = randomUUID();
-  await database.transaction(memberQueries(database, id, input));
+  const currentHead = data.members.find((member) => member.isClanHead);
+  const headChange = resolveClanHeadChange({
+    currentMember: null,
+    currentHead,
+    requestedMember: {
+      id,
+      fullName: input.full_name,
+      status: input.life_status,
+      isClanHead: input.is_clan_head,
+      isPreviousClanHead: input.is_previous_clan_head,
+    },
+    confirmHeadChange: body.confirmClanHeadChange === true,
+  });
+  const nextInput = {
+    ...input,
+    is_clan_head: headChange.isClanHead,
+    is_previous_clan_head: headChange.isPreviousClanHead,
+  };
+  await assertMemberRelationships(database, data, 'new-member', nextInput.parentIds);
+  await assertMemberIds(database, nextInput.spouseIds);
+  const queries = [
+    ...(headChange.previousHeadId
+      ? [
+          database`
+            UPDATE members
+            SET is_clan_head = FALSE, is_previous_clan_head = TRUE, updated_at = NOW()
+            WHERE id = ${headChange.previousHeadId}::uuid
+          `,
+        ]
+      : []),
+    ...memberQueries(database, id, nextInput),
+    ...(headChange.headChanged
+      ? clanHeadChangeEventQueries(database, {
+          oldHead: currentHead,
+          newHead: headChange.newHeadId
+            ? { id, fullName: input.full_name }
+            : null,
+        })
+      : []),
+  ];
+  await database.transaction(queries);
   return (await getClanData(database)).members.find((member) => member.id === id);
 }
 
@@ -300,10 +388,37 @@ async function updateMember(database, id, body) {
     { ...memberAsInput(current), ...body },
     { memberId: id },
   );
-  await assertMemberRelationships(database, data, id, input.parentIds);
-  await assertMemberIds(database, input.spouseIds);
+  const currentHead = data.members.find((member) => member.isClanHead);
+  const headChange = resolveClanHeadChange({
+    currentMember: current,
+    currentHead,
+    requestedMember: {
+      id,
+      fullName: input.full_name,
+      status: input.life_status,
+      isClanHead: input.is_clan_head,
+      isPreviousClanHead: input.is_previous_clan_head,
+    },
+    confirmHeadChange: body.confirmClanHeadChange === true,
+  });
+  const nextInput = {
+    ...input,
+    is_clan_head: headChange.isClanHead,
+    is_previous_clan_head: headChange.isPreviousClanHead,
+  };
+  await assertMemberRelationships(database, data, id, nextInput.parentIds);
+  await assertMemberIds(database, nextInput.spouseIds);
 
   const queries = [
+    ...(headChange.previousHeadId && headChange.previousHeadId !== id
+      ? [
+          database`
+            UPDATE members
+            SET is_clan_head = FALSE, is_previous_clan_head = TRUE, updated_at = NOW()
+            WHERE id = ${headChange.previousHeadId}::uuid
+          `,
+        ]
+      : []),
     database`
       UPDATE members
       SET full_name = ${input.full_name}, familiar_name = ${input.familiar_name},
@@ -314,6 +429,8 @@ async function updateMember(database, id, body) {
           age_at_death_qualifier = ${input.age_at_death_qualifier},
           age_group = ${input.age_group}, avatar_style = ${input.avatar_style},
           avatar_image_url = ${input.avatar_image_url},
+          is_clan_head = ${nextInput.is_clan_head},
+          is_previous_clan_head = ${nextInput.is_previous_clan_head},
           death_anniversary_lunar_day = ${input.death_anniversary_lunar_day},
           death_anniversary_lunar_month = ${input.death_anniversary_lunar_month},
           hometown = ${input.hometown}, residence = ${input.residence},
@@ -322,19 +439,27 @@ async function updateMember(database, id, body) {
     `,
     database`DELETE FROM member_parents WHERE child_id = ${id}::uuid`,
     database`DELETE FROM member_spouses WHERE member_a_id = ${id}::uuid OR member_b_id = ${id}::uuid`,
-    ...input.parentIds.map(
+    ...nextInput.parentIds.map(
       (parentId, index) => database`
         INSERT INTO member_parents (child_id, parent_id, parent_order)
         VALUES (${id}::uuid, ${parentId}::uuid, ${index + 1})
       `,
     ),
-    ...input.spouseIds.map(
+    ...nextInput.spouseIds.map(
       (spouseId) => database`
         INSERT INTO member_spouses (member_a_id, member_b_id)
         VALUES (LEAST(${id}::uuid, ${spouseId}::uuid), GREATEST(${id}::uuid, ${spouseId}::uuid))
         ON CONFLICT DO NOTHING
       `,
     ),
+    ...(headChange.headChanged
+      ? clanHeadChangeEventQueries(database, {
+          oldHead: currentHead,
+          newHead: headChange.newHeadId
+            ? { id, fullName: input.full_name }
+            : null,
+        })
+      : []),
   ];
   await database.transaction(queries);
   return (await getClanData(database)).members.find((member) => member.id === id);

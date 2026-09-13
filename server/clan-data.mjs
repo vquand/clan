@@ -102,6 +102,8 @@ export function assembleClanData({
       ageGroup: row.age_group ?? undefined,
       avatarStyle: row.avatar_style ?? undefined,
       avatarImageUrl: row.avatar_image_url ?? undefined,
+      isClanHead: row.is_clan_head === true,
+      isPreviousClanHead: row.is_previous_clan_head === true,
       deathAnniversaryLunar:
         lunarDay !== undefined && lunarMonth !== undefined
           ? { day: lunarDay, month: lunarMonth }

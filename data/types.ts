@@ -29,6 +29,8 @@ export interface Member {
   ageGroup?: MemberAgeGroup;
   avatarStyle?: MemberAvatarStyle;
   avatarImageUrl?: string;
+  isClanHead?: boolean;
+  isPreviousClanHead?: boolean;
   deathAnniversaryLunar?: { day: number; month: number };
   parentIds: string[];
   spouseIds: string[];
