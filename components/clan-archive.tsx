@@ -76,12 +76,14 @@ function MemberAvatar({
   small?: boolean;
 }) {
   const variant = getMemberAvatarVariant(member);
+  const memorialClass =
+    member.status === 'deceased' ? ' member-avatar--deceased' : '';
   return (
     <span
       className={
         small
-          ? `member-avatar member-avatar--small member-avatar--${variant}`
-          : `member-avatar member-avatar--${variant}`
+          ? `member-avatar member-avatar--small member-avatar--${variant}${memorialClass}`
+          : `member-avatar member-avatar--${variant}${memorialClass}`
       }
       aria-hidden="true"
     >

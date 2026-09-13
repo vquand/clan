@@ -58,6 +58,7 @@
   --female-avatar-background: oklch(0.94 0.06 12);
   --neutral-avatar-background: oklch(0.93 0.02 80);
   --unknown-avatar-background: oklch(0.9 0.025 245);
+  --memorial-avatar-background: oklch(0.92 0 0);
 }
 
 @layer base {
@@ -428,11 +429,6 @@
   --member-border-color: var(--unknown-gender-border);
   border-style: dashed;
 }
-.member-card--deceased,
-.person-pill--deceased {
-  border-style: double;
-  border-width: 3px;
-}
 .member-card:focus-visible,
 .person-pill:focus-visible {
   outline: 3px solid oklch(0.65 0.11 49 / 0.45);
@@ -465,6 +461,12 @@
 .member-avatar--toddler-girl {
   background: var(--female-avatar-background);
 }
+.member-avatar--senior-man {
+  background: var(--male-avatar-background);
+}
+.member-avatar--senior-woman {
+  background: var(--female-avatar-background);
+}
 .member-avatar--baby {
   background: var(--neutral-avatar-background);
 }
@@ -474,6 +476,21 @@
 .member-avatar--small {
   width: 2.3rem;
   height: 2.3rem;
+}
+.member-avatar--deceased {
+  width: 3.5rem;
+  height: 4.5rem;
+  padding: 0.15rem;
+  background: var(--memorial-avatar-background);
+  border: 3px double var(--memorial-border);
+  border-radius: 0.2rem;
+}
+.member-avatar--deceased .member-avatar__image {
+  filter: grayscale(1);
+}
+.member-avatar--small.member-avatar--deceased {
+  width: 2.3rem;
+  height: 3rem;
 }
 .member-card__body {
   display: flex;
@@ -705,6 +722,8 @@
   border-color: var(--female-border);
 }
 .legend-border--memorial {
+  width: 0.75rem;
+  height: 1.1rem;
   border-color: var(--memorial-border);
   border-style: double;
   border-width: 3px;

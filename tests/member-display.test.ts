@@ -89,6 +89,40 @@ void test('selects people icons from gender and age', () => {
   );
   assert.equal(
     getMemberAvatarVariant(
+      { ...baseMember, gender: 'male', birthYear: 2001, status: 'living' },
+      referenceDate,
+    ),
+    'male',
+  );
+  assert.equal(
+    getMemberAvatarVariant(
+      { ...baseMember, gender: 'female', birthYear: 1966, status: 'living' },
+      referenceDate,
+    ),
+    'senior-woman',
+  );
+  assert.equal(
+    getMemberAvatarVariant(
+      { ...baseMember, gender: 'male', birthYear: 1966, status: 'living' },
+      referenceDate,
+    ),
+    'senior-man',
+  );
+  assert.equal(
+    getMemberAvatarVariant(
+      {
+        ...baseMember,
+        gender: 'male',
+        birthDate: '2000-09-13',
+        deathDate: '2026-09-13',
+        status: 'deceased',
+      },
+      referenceDate,
+    ),
+    'male',
+  );
+  assert.equal(
+    getMemberAvatarVariant(
       { ...baseMember, gender: 'male', birthYear: 2005, status: 'living' },
       referenceDate,
     ),

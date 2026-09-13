@@ -36,6 +36,8 @@ function calculateMemberAge(member: Member, referenceDate: Date) {
 export type MemberAvatarVariant =
   | 'male'
   | 'female'
+  | 'senior-man'
+  | 'senior-woman'
   | 'young-man'
   | 'young-woman'
   | 'toddler-boy'
@@ -54,8 +56,9 @@ export function getMemberAvatarVariant(
     if (age < 3) return 'baby';
     if (age < 12)
       return member.gender === 'male' ? 'toddler-boy' : 'toddler-girl';
-    if (age <= 25)
-      return member.gender === 'male' ? 'young-man' : 'young-woman';
+    if (age < 25) return member.gender === 'male' ? 'young-man' : 'young-woman';
+    if (age >= 60)
+      return member.gender === 'male' ? 'senior-man' : 'senior-woman';
   }
 
   return member.gender;

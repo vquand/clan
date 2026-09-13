@@ -37,9 +37,25 @@ test('member search, profile, tree, and calendar work without browser errors', a
   await expect(page.getByText('Nội tộc', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Ngoại tộc', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Dâu / rể', { exact: true })).toHaveCount(0);
-  await expect(
-    page.getByRole('button', { name: /Nguyễn Văn An/ }).first(),
-  ).toContainText('Tuổi: [80]');
+  const deceasedCard = page
+    .getByRole('button', { name: /Nguyễn Văn An/ })
+    .first();
+  await expect(deceasedCard).toHaveClass(/member-card--deceased/);
+  await expect(deceasedCard).toContainText('Tuổi: [80]');
+  const deceasedAvatar = deceasedCard.locator('.member-avatar');
+  await expect(deceasedAvatar).toHaveClass(/member-avatar--senior-man/);
+  await expect(deceasedAvatar).toHaveClass(/member-avatar--deceased/);
+  const memorialStyle = await deceasedAvatar.evaluate((element) => {
+    const image = element.querySelector('img');
+    const style = getComputedStyle(element);
+    return {
+      height: Number.parseFloat(style.height),
+      width: Number.parseFloat(style.width),
+      imageFilter: image ? getComputedStyle(image).filter : '',
+    };
+  });
+  expect(memorialStyle.height).toBeGreaterThan(memorialStyle.width);
+  expect(memorialStyle.imageFilter).toContain('grayscale');
 
   const search = page.getByLabel('Tìm thành viên');
   await search.fill('Giang');
