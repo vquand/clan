@@ -50,6 +50,7 @@ import {
   getGenerationFilters,
   getMember,
   getLunarDate,
+  getMoonPhase,
   getRelatives,
   orderCoupleMembers,
 } from '@/lib/clan';
@@ -187,6 +188,41 @@ function formatDate(date: string | undefined, locale: Locale) {
     month: '2-digit',
     year: 'numeric',
   }).format(new Date(`${date}T00:00:00`));
+}
+
+function toIsoDate(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function MoonPhaseBanner({
+  date,
+  locale,
+  className = '',
+}: {
+  date: string;
+  locale: Locale;
+  className?: string;
+}) {
+  const lunar = getLunarDate(new Date(`${date}T00:00:00`));
+  const phase = getMoonPhase(lunar.day);
+  return (
+    <div
+      className={`moon-phase-banner moon-phase-banner--${phase}${
+        className ? ` ${className}` : ''
+      }`}
+      aria-label={formatLunarDate(date, locale)}
+      data-moon-phase={phase}
+    >
+      <span className="moon-phase-banner__orb" aria-hidden="true" />
+      <span className="moon-phase-banner__label">
+        {formatLunarDate(date, locale)}
+      </span>
+    </div>
+  );
 }
 
 function MemberAvatar({
@@ -655,7 +691,9 @@ function EventDetail({
         <DialogHeader>
           <div className="event-detail__eyebrow">
             <Badge variant="outline">{eventTypeLabel(event, locale)}</Badge>
-            <span aria-hidden="true">{event.calendar === 'lunar' ? '🌙' : '☀️'}</span>
+            <span aria-hidden="true">
+              {event.calendar === 'lunar' ? '🌙' : '☀️'}
+            </span>
           </div>
           <DialogTitle>{event.title}</DialogTitle>
           <DialogDescription>
@@ -669,15 +707,23 @@ function EventDetail({
               <strong>{formatDate(date, locale)}</strong>
             </div>
             <div>
-              <span className="eyebrow">{translate(locale, 'lunarDateLabel')}</span>
+              <span className="eyebrow">
+                {translate(locale, 'lunarDateLabel')}
+              </span>
               <strong>{formatLunarDate(date, locale)}</strong>
             </div>
           </div>
           <div className="event-detail__location">
-            <span className="event-detail__location-icon"><MapPin aria-hidden="true" /></span>
+            <span className="event-detail__location-icon">
+              <MapPin aria-hidden="true" />
+            </span>
             <div>
-              <span className="eyebrow">{translate(locale, 'eventLocation')}</span>
-              <strong>{event.location || translate(locale, 'noLocation')}</strong>
+              <span className="eyebrow">
+                {translate(locale, 'eventLocation')}
+              </span>
+              <strong>
+                {event.location || translate(locale, 'noLocation')}
+              </strong>
               {event.locationAddress && <p>{event.locationAddress}</p>}
             </div>
           </div>
@@ -719,6 +765,7 @@ function CalendarView({
     const frame = requestAnimationFrame(() => {
       const now = new Date();
       setVisible({ year: now.getFullYear(), month: now.getMonth() });
+      setSelectedDate(toIsoDate(now));
     });
     return () => cancelAnimationFrame(frame);
   }, []);
@@ -738,6 +785,12 @@ function CalendarView({
       return { year: date.getFullYear(), month: date.getMonth() };
     });
   }
+  function selectToday() {
+    const now = new Date();
+    setVisible({ year: now.getFullYear(), month: now.getMonth() });
+    setSelectedDate(toIsoDate(now));
+  }
+  const todayIso = toIsoDate(new Date());
   const monthTitle = new Intl.DateTimeFormat(getIntlLocale(locale), {
     month: 'long',
     year: 'numeric',
@@ -758,14 +811,7 @@ function CalendarView({
           >
             <ArrowLeft />
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              const now = new Date();
-              setSelectedDate(null);
-              setVisible({ year: now.getFullYear(), month: now.getMonth() });
-            }}
-          >
+          <Button variant="outline" onClick={selectToday}>
             {translate(locale, 'today')}
           </Button>
           <Button
@@ -778,14 +824,19 @@ function CalendarView({
           </Button>
         </div>
       </div>
-      <div className="calendar-legend" aria-label={translate(locale, 'calendarLegend')}>
+      <div
+        className="calendar-legend"
+        aria-label={translate(locale, 'calendarLegend')}
+      >
         <span>
           <Sun aria-hidden="true" />
           <strong>{translate(locale, 'solarDate')}</strong>
         </span>
         <span>
           <Moon aria-hidden="true" />
-          <strong className="lunar-chip">{translate(locale, 'lunarDateLabel')}</strong>
+          <strong className="lunar-chip">
+            {translate(locale, 'lunarDateLabel')}
+          </strong>
         </span>
       </div>
       <div className="calendar-layout">
@@ -801,27 +852,30 @@ function CalendarView({
               String(date.getMonth() + 1).padStart(2, '0'),
               String(date.getDate()).padStart(2, '0'),
             ].join('-');
+            const isToday = iso === todayIso;
             const dayEvents = datedEvents.filter((item) => item.date === iso);
             const selectDate = () =>
               setSelectedDate((current) => (current === iso ? null : iso));
             return (
               <div
-                className={
-                  `${inMonth ? 'calendar-day' : 'calendar-day calendar-day--muted'}${
-                    selectedDate === iso ? ' calendar-day--selected' : ''
-                  }`
-                }
+                className={`${inMonth ? 'calendar-day' : 'calendar-day calendar-day--muted'}${
+                  isToday ? ' calendar-day--today' : ''
+                }${selectedDate === iso ? ' calendar-day--selected' : ''}`}
                 key={iso}
               >
+                <MoonPhaseBanner date={iso} locale={locale} />
                 <button
                   type="button"
                   className="calendar-day__select"
-                  aria-label={formatDate(iso, locale)}
+                  aria-label={`${formatDate(iso, locale)} · ${formatLunarDate(iso, locale)}`}
                   aria-pressed={selectedDate === iso}
                   onClick={selectDate}
                 >
                   <time dateTime={iso}>{date.getDate()}</time>
-                  <span className="lunar-chip" aria-label={formatLunarDate(iso, locale)}>
+                  <span
+                    className="lunar-chip"
+                    aria-label={formatLunarDate(iso, locale)}
+                  >
                     {(() => {
                       const lunar = getLunarDate(date);
                       return `${lunar.day}/${lunar.month}${lunar.isLeapMonth ? '*' : ''}`;
@@ -839,7 +893,9 @@ function CalendarView({
                       setSelectedEvent({ event, date: iso });
                     }}
                   >
-                    <span aria-hidden="true">{event.calendar === 'lunar' ? '🌙' : '☀️'}</span>
+                    <span aria-hidden="true">
+                      {event.calendar === 'lunar' ? '🌙' : '☀️'}
+                    </span>
                     <span className="day-event__title">{event.title}</span>
                   </button>
                 ))}
@@ -848,9 +904,16 @@ function CalendarView({
           })}
         </div>
         <aside
-          className="event-list"
+          className={`event-list${selectedDate ? ' event-list--selected' : ''}`}
           aria-label={translate(locale, 'importantDatesLabel')}
         >
+          {selectedDate && (
+            <MoonPhaseBanner
+              date={selectedDate}
+              locale={locale}
+              className="moon-phase-banner--event-list"
+            />
+          )}
           <div className="event-list__heading">
             <p className="eyebrow">
               {selectedDate
@@ -891,13 +954,28 @@ function CalendarView({
               </div>
               <div>
                 <Badge variant="outline">{eventTypeLabel(event, locale)}</Badge>
-                <h4 className="event-card__title" title={event.title}>{event.title}</h4>
+                <h4 className="event-card__title" title={event.title}>
+                  {event.title}
+                </h4>
                 <p className="event-card__dates">
                   <Sun aria-hidden="true" /> {formatDate(date, locale)}
-                  <span className="lunar-chip">{formatLunarDate(date, locale)}</span>
+                  <span className="lunar-chip">
+                    {formatLunarDate(date, locale)}
+                  </span>
                 </p>
-                {event.location && <p><MapPin aria-hidden="true" /> {event.location}</p>}
-                {event.calendar === 'lunar' && <small>{translate(locale, 'lunarVerified', { day: event.day, month: event.month })}</small>}
+                {event.location && (
+                  <p>
+                    <MapPin aria-hidden="true" /> {event.location}
+                  </p>
+                )}
+                {event.calendar === 'lunar' && (
+                  <small>
+                    {translate(locale, 'lunarVerified', {
+                      day: event.day,
+                      month: event.month,
+                    })}
+                  </small>
+                )}
               </div>
             </button>
           ))}

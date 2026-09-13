@@ -26,8 +26,11 @@ test('member search, profile, tree, and calendar work without browser errors', a
   await expect(page.getByRole('tab').nth(0)).toHaveText('Lịch họ');
   await expect(page.getByRole('tab').nth(1)).toHaveText('Gia phả');
   await expect(page.getByRole('tab').nth(2)).toHaveText('Thành viên');
+  await expect(page.locator('.calendar-day--today')).toHaveClass(
+    /calendar-day--selected/,
+  );
   await expect(
-    page.getByRole('heading', { name: 'Ngày đáng nhớ' }),
+    page.locator('.event-list--selected .moon-phase-banner'),
   ).toBeVisible();
 
   await page.getByRole('tab', { name: 'Thành viên' }).click();
@@ -114,10 +117,15 @@ test('member search, profile, tree, and calendar work without browser errors', a
   });
 
   await page.getByRole('tab', { name: 'Lịch họ' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Ngày đáng nhớ' }),
-  ).toBeVisible();
+  await expect(page.locator('.calendar-day--today')).toHaveClass(
+    /calendar-day--selected/,
+  );
   await page.getByRole('button', { name: 'Tháng sau' }).click();
+  await expect(page.locator('.calendar-day--selected')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Hôm nay' }).click();
+  await expect(page.locator('.calendar-day--today')).toHaveClass(
+    /calendar-day--selected/,
+  );
   await expect(page.locator('.calendar-grid')).toBeVisible();
 
   await page.screenshot({
@@ -183,6 +191,11 @@ test('calendar explains both calendars and opens event details', async ({
   await expect(page.locator('.calendar-legend')).toContainText('Dương lịch');
   await expect(page.locator('.calendar-legend')).toContainText('Âm lịch');
   await expect(page.locator('.calendar-day .lunar-chip').first()).toBeVisible();
+  await expect(
+    page.locator('.calendar-day--today .moon-phase-banner'),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Xem tất cả ngày' }).click();
 
   await page
     .locator('.event-card')
@@ -224,7 +237,9 @@ test('truncates long event names inside calendar cards', async ({ page }) => {
   });
 
   await page.goto('/');
-  const title = page.locator('.day-event__title').filter({ hasText: longTitle });
+  const title = page
+    .locator('.day-event__title')
+    .filter({ hasText: longTitle });
   await expect(title).toBeVisible();
   await expect(title).toHaveCSS('text-overflow', 'ellipsis');
   const dimensions = await title.evaluate((element) => ({
@@ -234,7 +249,9 @@ test('truncates long event names inside calendar cards', async ({ page }) => {
   expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
 });
 
-test('filters the event list when a calendar day is selected', async ({ page }) => {
+test('filters the event list when a calendar day is selected', async ({
+  page,
+}) => {
   const now = new Date();
   const eventForFirstDay = 'Event on the first day';
   const eventForSecondDay = 'Event on the second day';
@@ -271,12 +288,16 @@ test('filters the event list when a calendar day is selected', async ({ page }) 
   });
 
   await page.goto('/');
-  const firstDay = page.locator('.calendar-day').filter({ hasText: eventForFirstDay });
+  const firstDay = page
+    .locator('.calendar-day')
+    .filter({ hasText: eventForFirstDay });
   await firstDay.locator('.calendar-day__select').click();
   await expect(page.locator('.calendar-day--selected')).toHaveCount(1);
   await expect(page.locator('.event-list .event-card')).toHaveCount(1);
   await expect(page.locator('.event-list')).toContainText(eventForFirstDay);
-  await expect(page.locator('.event-list')).not.toContainText(eventForSecondDay);
+  await expect(page.locator('.event-list')).not.toContainText(
+    eventForSecondDay,
+  );
 
   await page.getByRole('button', { name: 'Xem tất cả ngày' }).click();
   await expect(page.locator('.event-list .event-card')).toHaveCount(2);

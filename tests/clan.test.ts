@@ -10,6 +10,7 @@ import {
   orderCoupleMembers,
   getEventDate,
   getLunarDate,
+  getMoonPhase,
   getSolarDateFromLunar,
   getGenerationFilters,
   getGenerations,
@@ -115,6 +116,14 @@ void test('calendar grid always contains complete weeks', () => {
   assert.equal(days.length % 7, 0);
   assert.ok(days.length >= 35);
   assert.equal(days[0]?.date.getDay(), 1);
+});
+
+void test('moon phases progress from new moon to full moon and back', () => {
+  assert.equal(getMoonPhase(1), 'new');
+  assert.equal(getMoonPhase(8), 'first-quarter');
+  assert.equal(getMoonPhase(15), 'full');
+  assert.equal(getMoonPhase(23), 'last-quarter');
+  assert.equal(getMoonPhase(30), 'new');
 });
 
 void test('parent cycles are rejected before a tree can be rendered', () => {

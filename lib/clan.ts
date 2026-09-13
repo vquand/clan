@@ -128,6 +128,31 @@ export function getEventDate(event: ClanEvent, year: number) {
   return `${event.year ?? year}-${month}-${day}`;
 }
 
+export const moonPhases = [
+  'new',
+  'waxing-crescent',
+  'first-quarter',
+  'waxing-gibbous',
+  'full',
+  'waning-gibbous',
+  'last-quarter',
+  'waning-crescent',
+] as const;
+
+export type MoonPhase = (typeof moonPhases)[number];
+
+export function getMoonPhase(lunarDay: number): MoonPhase {
+  const day = Math.max(1, Math.min(30, Math.round(lunarDay)));
+  if (day === 1 || day >= 29) return 'new';
+  if (day <= 15) {
+    const index = Math.min(4, Math.round(((day - 1) / 14) * 4));
+    return moonPhases[index];
+  }
+
+  const index = 4 + Math.min(3, Math.round(((day - 15) / 13) * 3));
+  return moonPhases[index];
+}
+
 export interface CalendarDay {
   date: Date;
   inMonth: boolean;

@@ -860,10 +860,100 @@
 }
 .calendar-day {
   position: relative;
+  overflow: hidden;
   min-height: 80px;
   padding: 0.35rem;
   background: var(--card);
   font-size: 0.85rem;
+}
+.moon-phase-banner {
+  position: absolute;
+  inset: 0.2rem 0.25rem 0.35rem;
+  z-index: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.35rem;
+  pointer-events: none;
+  opacity: 0.07;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+.moon-phase-banner__orb {
+  position: relative;
+  display: block;
+  width: min(4rem, 64%);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--primary) 28%, transparent);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    oklch(0.29 0.025 65),
+    oklch(0.16 0.025 45) 72%
+  );
+  box-shadow: 0 0.25rem 0.8rem oklch(0.2 0.04 35 / 0.18);
+}
+.moon-phase-banner__orb::before {
+  position: absolute;
+  inset: 0;
+  content: '';
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    oklch(0.95 0.07 88),
+    oklch(0.77 0.1 76) 72%
+  );
+  transform: translateX(0);
+  transition: transform 180ms ease;
+}
+.moon-phase-banner--new .moon-phase-banner__orb::before {
+  display: none;
+}
+.moon-phase-banner--waxing-crescent .moon-phase-banner__orb::before {
+  transform: translateX(57%);
+}
+.moon-phase-banner--first-quarter .moon-phase-banner__orb::before {
+  transform: translateX(50%);
+}
+.moon-phase-banner--waxing-gibbous .moon-phase-banner__orb::before {
+  transform: translateX(16%);
+}
+.moon-phase-banner--waning-gibbous .moon-phase-banner__orb::before {
+  transform: translateX(-16%);
+}
+.moon-phase-banner--last-quarter .moon-phase-banner__orb::before {
+  transform: translateX(-50%);
+}
+.moon-phase-banner--waning-crescent .moon-phase-banner__orb::before {
+  transform: translateX(-57%);
+}
+.moon-phase-banner__label {
+  align-self: flex-end;
+  max-width: 0;
+  overflow: hidden;
+  color: var(--primary);
+  font-size: 0.62rem;
+  font-weight: 750;
+  line-height: 1.2;
+  opacity: 0;
+  white-space: nowrap;
+  transition:
+    max-width 180ms ease,
+    opacity 180ms ease;
+}
+.calendar-day:hover .moon-phase-banner,
+.calendar-day--selected .moon-phase-banner,
+.event-list--selected .moon-phase-banner {
+  opacity: 0.34;
+  transform: scale(1.03);
+}
+.calendar-day:hover .moon-phase-banner__label,
+.calendar-day--selected .moon-phase-banner__label,
+.event-list--selected .moon-phase-banner__label {
+  max-width: 8rem;
+  opacity: 1;
 }
 .calendar-day__select {
   display: flex;
@@ -879,6 +969,8 @@
   border: 0;
   cursor: pointer;
   font: inherit;
+  position: relative;
+  z-index: 1;
 }
 .calendar-day__select:focus-visible {
   outline: 2px solid var(--primary);
@@ -895,6 +987,10 @@
 .calendar-day--muted {
   color: oklch(0.68 0.03 68);
   background: oklch(0.965 0.014 80);
+}
+.calendar-day--today {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
 }
 .day-event {
   display: flex;
@@ -944,6 +1040,8 @@
   border-color: oklch(0.52 0.11 151);
 }
 .event-list {
+  position: relative;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.75rem;
@@ -951,6 +1049,22 @@
   background: oklch(0.995 0.006 86 / 0.8);
   border: 1px solid var(--border);
   border-radius: 1rem;
+}
+.event-list > *:not(.moon-phase-banner) {
+  position: relative;
+  z-index: 1;
+}
+.event-list > .moon-phase-banner {
+  z-index: 0;
+}
+.moon-phase-banner--event-list {
+  align-items: center;
+  justify-content: flex-end;
+  padding: 1rem;
+  opacity: 0.1;
+}
+.event-list--selected .moon-phase-banner--event-list {
+  opacity: 0.24;
 }
 .event-list h3 {
   margin: 0;
@@ -1256,7 +1370,11 @@
   padding: 1rem 1rem 3rem;
   color: var(--foreground);
   background:
-    radial-gradient(circle at 90% 0%, oklch(0.93 0.07 78 / 0.7), transparent 26rem),
+    radial-gradient(
+      circle at 90% 0%,
+      oklch(0.93 0.07 78 / 0.7),
+      transparent 26rem
+    ),
     var(--background);
 }
 .admin-shell--login,
