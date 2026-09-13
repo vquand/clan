@@ -14,7 +14,7 @@ The repository contains only fictional sample records. Production data lives in 
 - three reading sizes, persisted in the visitor's local storage;
 - mobile-first layout with touch-friendly controls;
 - static frontend output deployed on Vercel;
-- a read-only Render API backed by Neon Postgres;
+- a Render API backed by Neon Postgres, with a protected admin workspace for managing the archive;
 - validation for IDs, relationships, cycles, dates, and private seed data.
 
 ## Privacy model
@@ -33,9 +33,9 @@ Public GitHub repository ── fictional samples + application code
 
 The browser-visible `NEXT_PUBLIC_API_URL` contains no secret. `DATABASE_URL` stays on Render, and `CLAN_DATA_JSON`/`CLAN_DATA_FILE` are used only when seeding Neon. Do not put either of those values in Vercel.
 
-However, this application intentionally has **no login system**. Any record rendered on the deployed site is delivered to the visitor's browser and must be treated as public. Environment variables prevent source-code disclosure; they are not access control. Publish only information that the affected family members have agreed to share. Do not include identity numbers, private addresses, phone numbers, medical information, or other sensitive records.
+The public archive remains read-only, while `/admin/` provides a protected workspace for maintaining records. The backend reads `ADMIN_USERNAME` and `ADMIN_PASSWORD` from its private environment and issues short-lived HttpOnly session cookies after login. Environment variables prevent source-code disclosure; they are not a substitute for publishing only information that the affected family members have agreed to share. Do not include identity numbers, private addresses, phone numbers, medical information, or other sensitive records.
 
-If the records must remain confidential, the project needs authentication and a server-side authorization layer; that is a different security model from this login-free static application.
+The admin session protects changes to the database; it does not make records private once they are returned by `GET /api/clan`. If the records must remain confidential, the public read endpoint also needs authentication and authorization.
 
 ## Quick start
 
@@ -156,6 +156,13 @@ Render runs `db:migrate` before starting the API and exposes:
 - `GET /health` for the Render health check;
 - `GET /api/clan` for the Vercel frontend.
 
+The protected admin API uses:
+
+- `POST /api/admin/login`, `GET /api/admin/session`, and `POST /api/admin/logout` for the admin session;
+- `GET /api/admin/data` to load the editable dataset;
+- `POST|PATCH|DELETE /api/admin/members` and `/api/admin/members/:id` for member CRUD, parent/spouse links, and avatar fields;
+- `POST|PATCH|DELETE /api/admin/events` and `/api/admin/events/:id` for event CRUD and optional 0-to-many member links.
+
 Each member stores an internal `clan_relation` value: `lineage` for names
 containing `Đỗ` and `marriage` for people who joined from outside the clan.
 The value supports the family-tree data model and is not shown as a relationship
@@ -172,6 +179,8 @@ DATABASE_URL="postgresql://..." CLAN_DATA_FILE="/private/path/clan-data.json" np
 [`vercel.mjs`](vercel.mjs) selects the `Other` framework preset, runs `npm ci` and `npm run build`, publishes `dist/client`, and proxies `/api/*` to Render. The browser therefore uses a same-origin `/api/clan` request and does not depend on CORS for normal frontend traffic. Connect the repository to Vercel with `main` as the Production Branch. Every push to `main` creates a production deployment.
 
 Set `API_URL` in Vercel's **Production** environment to the Render service origin, for example `https://clan-api.onrender.com`. Set it in **Preview** as well if previews should use the backend. `NEXT_PUBLIC_API_URL` remains accepted while migrating existing projects, but the URL no longer needs to be exposed to browser code. Redeploy after changing environment variables; Vercel applies them to new deployments.
+
+Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and preferably a long random `ADMIN_SESSION_SECRET` only on the Render service. Never add them to Vercel or commit them to the repository. Open `/admin/` on the deployed Vercel site to use the workspace.
 
 ## Development commands
 

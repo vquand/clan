@@ -9,11 +9,13 @@ import {
   GitCommitHorizontal,
   MapPin,
   Search,
+  ShieldCheck,
   Sprout,
   TreePine,
   Users,
 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -917,6 +919,10 @@ export function ClanArchive({
               </div>
             </fieldset>
           </div>
+          <Link className="archive-admin-link" href="/admin/">
+            <ShieldCheck aria-hidden="true" />
+            {translate(locale, 'adminLink')}
+          </Link>
         </div>
       </header>
       <Tabs
