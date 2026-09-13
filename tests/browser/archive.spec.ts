@@ -159,6 +159,45 @@ test('shows current and previous clan head markers on member avatars', async ({
   ).toBeVisible();
 });
 
+test('calendar explains both calendars and opens event details', async ({
+  page,
+}) => {
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({
+      json: {
+        members,
+        events: clanEvents.map((event) =>
+          event.id === 'hop-ho-thang-tu'
+            ? {
+                ...event,
+                locationAddress: '123 Family Road',
+                locationGoogleMapUrl: 'https://maps.google.com/?q=family',
+              }
+            : event,
+        ),
+      },
+    });
+  });
+
+  await page.goto('/');
+  await expect(page.locator('.calendar-legend')).toContainText('Dương lịch');
+  await expect(page.locator('.calendar-legend')).toContainText('Âm lịch');
+  await expect(page.locator('.calendar-day .lunar-chip').first()).toBeVisible();
+
+  await page
+    .locator('.event-card')
+    .filter({ hasText: 'Họp họ đầu hè' })
+    .click();
+  const eventDialog = page.getByRole('dialog');
+  await expect(eventDialog).toContainText('Họp họ đầu hè');
+  await expect(eventDialog).toContainText('Dương lịch');
+  await expect(eventDialog).toContainText('Âm lịch');
+  await expect(eventDialog).toContainText('123 Family Road');
+  await expect(
+    eventDialog.getByRole('link', { name: /Mở trên Google Maps/ }),
+  ).toHaveAttribute('href', 'https://maps.google.com/?q=family');
+});
+
 test('opens the configured clan record while data is loading', async ({
   page,
 }, testInfo) => {

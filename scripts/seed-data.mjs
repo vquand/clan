@@ -1,6 +1,7 @@
 export function normalizeSeedData(data, generateId) {
   const memberIds = new Map();
   const eventIds = new Map();
+  const locationIds = new Map();
 
   for (const member of data.members) {
     if (memberIds.has(member.id)) {
@@ -19,10 +20,21 @@ export function normalizeSeedData(data, generateId) {
     }
     eventIds.set(event.id, generateId());
   }
+  for (const location of data.locations ?? []) {
+    if (locationIds.has(location.id)) {
+      throw new Error(`Duplicate location import key: ${location.id}`);
+    }
+    locationIds.set(location.id, generateId());
+  }
 
   const resolveMemberId = (importKey) => {
     const id = memberIds.get(importKey);
     if (!id) throw new Error(`Unknown member import key: ${importKey}`);
+    return id;
+  };
+  const resolveLocationId = (importKey) => {
+    const id = locationIds.get(importKey);
+    if (!id) throw new Error(`Unknown location import key: ${importKey}`);
     return id;
   };
 
@@ -87,7 +99,16 @@ export function normalizeSeedData(data, generateId) {
     recurrence: event.recurrence,
     event_year: event.year,
     location: event.location,
+    location_id: event.locationId ? resolveLocationId(event.locationId) : undefined,
+    location_address: event.locationAddress,
+    location_google_map_url: event.locationGoogleMapUrl,
     description: event.description,
+  }));
+  const locations = (data.locations ?? []).map((location) => ({
+    id: locationIds.get(location.id),
+    name: location.name,
+    address: location.address ?? '',
+    google_map_url: location.googleMapUrl,
   }));
   const eventMembers = data.events.flatMap((event) =>
     event.relatedMemberIds.map((memberImportKey) => ({
@@ -107,6 +128,7 @@ export function normalizeSeedData(data, generateId) {
     members,
     parents,
     spouses,
+    locations,
     events,
     eventMembers,
     eventSolarDates,

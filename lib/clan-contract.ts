@@ -91,8 +91,7 @@ export function isClanData(value: unknown): value is ClanData {
     Array.isArray(value.members) &&
     value.members.every(isMember) &&
     Array.isArray(value.events) &&
-    value.events.every(isClanEvent)
-    &&
+    value.events.every(isClanEvent) &&
     (value.locations === undefined ||
       (Array.isArray(value.locations) &&
         value.locations.every((location) =>

@@ -1,8 +1,9 @@
 import type { ClanEvent } from './types';
 
 /**
- * Với ngày âm lịch, cập nhật `solarDates` sau khi gia đình đối chiếu lịch mỗi năm.
- * Trang lịch chỉ hiển thị sự kiện âm khi năm đang xem có ngày dương tương ứng.
+ * `solarDates` is an optional yearly override for lunar dates that the family
+ * has checked. When it is absent, the calendar calculates the solar date and
+ * prefers the leap-month occurrence when a lunar month repeats.
  */
 export const clanEvents: ClanEvent[] = [
   {

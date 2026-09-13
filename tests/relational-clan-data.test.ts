@@ -9,6 +9,7 @@ void test('converts import-only keys into generated database IDs', () => {
     '00000000-0000-4000-8000-000000000011',
     '00000000-0000-4000-8000-000000000012',
     '10000000-0000-4000-8000-000000000011',
+    '10000000-0000-4000-8000-000000000012',
   ];
   const normalized = normalizeSeedData(
     {
@@ -48,6 +49,15 @@ void test('converts import-only keys into generated database IDs', () => {
           recurrence: 'annual',
           relatedMemberIds: ['person-name-slug'],
           location: 'Home',
+          locationId: 'family-home',
+        },
+      ],
+      locations: [
+        {
+          id: 'family-home',
+          name: 'Home',
+          address: '123 Family Road',
+          googleMapUrl: 'https://maps.google.com/?q=family',
         },
       ],
     },
@@ -81,6 +91,15 @@ void test('converts import-only keys into generated database IDs', () => {
       member_id: '00000000-0000-4000-8000-000000000011',
     },
   ]);
+  assert.deepEqual(normalized.locations, [
+    {
+      id: '10000000-0000-4000-8000-000000000012',
+      name: 'Home',
+      address: '123 Family Road',
+      google_map_url: 'https://maps.google.com/?q=family',
+    },
+  ]);
+  assert.equal(normalized.events[0].location_id, '10000000-0000-4000-8000-000000000012');
 });
 
 void test('requires an explicit clan relationship for every seed member', () => {

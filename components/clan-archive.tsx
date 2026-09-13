@@ -5,13 +5,16 @@ import {
   ArrowRight,
   CalendarDays,
   ChevronRight,
+  ExternalLink,
   Flower2,
   GitCommitHorizontal,
   KeyRound,
   MapPin,
+  Moon,
   Search,
   ShieldCheck,
   Sprout,
+  Sun,
   TreePine,
   UserRound,
   Users,
@@ -22,6 +25,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
   Sheet,
@@ -39,6 +49,7 @@ import {
   getEventDate,
   getGenerationFilters,
   getMember,
+  getLunarDate,
   getRelatives,
   orderCoupleMembers,
 } from '@/lib/clan';
@@ -617,6 +628,80 @@ function eventTypeLabel(event: ClanEvent, locale: Locale) {
   return translate(locale, 'gathering');
 }
 
+function formatLunarDate(date: string, locale: Locale) {
+  const lunar = getLunarDate(new Date(`${date}T00:00:00`));
+  return translate(locale, 'lunarDateWithLeap', {
+    day: lunar.day,
+    month: lunar.month,
+    leap: lunar.isLeapMonth ? ` · ${translate(locale, 'lunarLeap')}` : '',
+  });
+}
+
+function EventDetail({
+  event,
+  date,
+  locale,
+  onOpenChange,
+}: {
+  event: ClanEvent | null;
+  date: string | null;
+  locale: Locale;
+  onOpenChange: (open: boolean) => void;
+}) {
+  if (!event || !date) return null;
+  return (
+    <Dialog open={Boolean(event)} onOpenChange={onOpenChange}>
+      <DialogContent className="event-dialog">
+        <DialogHeader>
+          <div className="event-detail__eyebrow">
+            <Badge variant="outline">{eventTypeLabel(event, locale)}</Badge>
+            <span aria-hidden="true">{event.calendar === 'lunar' ? '🌙' : '☀️'}</span>
+          </div>
+          <DialogTitle>{event.title}</DialogTitle>
+          <DialogDescription>
+            {event.description || translate(locale, 'eventDetailsIntro')}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="event-detail">
+          <div className="event-detail__dates">
+            <div>
+              <span className="eyebrow">{translate(locale, 'solarDate')}</span>
+              <strong>{formatDate(date, locale)}</strong>
+            </div>
+            <div>
+              <span className="eyebrow">{translate(locale, 'lunarDateLabel')}</span>
+              <strong>{formatLunarDate(date, locale)}</strong>
+            </div>
+          </div>
+          <div className="event-detail__location">
+            <span className="event-detail__location-icon"><MapPin aria-hidden="true" /></span>
+            <div>
+              <span className="eyebrow">{translate(locale, 'eventLocation')}</span>
+              <strong>{event.location || translate(locale, 'noLocation')}</strong>
+              {event.locationAddress && <p>{event.locationAddress}</p>}
+            </div>
+          </div>
+          {event.locationGoogleMapUrl && (
+            <a
+              className="event-map-card"
+              href={event.locationGoogleMapUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <MapPin aria-hidden="true" />
+              <span>
+                <strong>{translate(locale, 'eventMap')}</strong>
+                <small>{translate(locale, 'openMap')}</small>
+              </span>
+              <ExternalLink aria-hidden="true" />
+            </a>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function CalendarView({
   events,
   locale,
@@ -625,6 +710,10 @@ function CalendarView({
   locale: Locale;
 }) {
   const [visible, setVisible] = useState({ year: 2026, month: 8 });
+  const [selectedEvent, setSelectedEvent] = useState<{
+    event: ClanEvent;
+    date: string;
+  } | null>(null);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       const now = new Date();
@@ -683,6 +772,16 @@ function CalendarView({
           </Button>
         </div>
       </div>
+      <div className="calendar-legend" aria-label={translate(locale, 'calendarLegend')}>
+        <span>
+          <Sun aria-hidden="true" />
+          <strong>{translate(locale, 'solarDate')}</strong>
+        </span>
+        <span>
+          <Moon aria-hidden="true" />
+          <strong className="lunar-chip">{translate(locale, 'lunarDateLabel')}</strong>
+        </span>
+      </div>
       <div className="calendar-layout">
         <div className="calendar-grid" aria-label={monthTitle}>
           {weekdayLabels[locale].map((day) => (
@@ -705,14 +804,23 @@ function CalendarView({
                 key={iso}
               >
                 <time dateTime={iso}>{date.getDate()}</time>
+                <span className="lunar-chip" aria-label={formatLunarDate(iso, locale)}>
+                  {(() => {
+                    const lunar = getLunarDate(date);
+                    return `${lunar.day}/${lunar.month}${lunar.isLeapMonth ? '*' : ''}`;
+                  })()}
+                </span>
                 {dayEvents.map(({ event }) => (
-                  <div
+                  <button
+                    type="button"
                     className={`day-event day-event--${event.type}`}
                     key={event.id}
                     title={event.title}
+                    onClick={() => setSelectedEvent({ event, date: iso })}
                   >
+                    <span aria-hidden="true">{event.calendar === 'lunar' ? '🌙' : '☀️'}</span>
                     {event.title}
-                  </div>
+                  </button>
                 ))}
               </div>
             );
@@ -729,7 +837,13 @@ function CalendarView({
             <h3>{translate(locale, 'memorableDays')}</h3>
           </div>
           {datedEvents.map(({ event, date }) => (
-            <article className="event-card" key={event.id}>
+            <button
+              className="event-card"
+              key={event.id}
+              type="button"
+              onClick={() => setSelectedEvent({ event, date })}
+              aria-label={`${event.title}, ${formatDate(date, locale)}`}
+            >
               <div className="event-date">
                 <strong>{new Date(`${date}T00:00:00`).getDate()}</strong>
                 <span>
@@ -741,19 +855,14 @@ function CalendarView({
               <div>
                 <Badge variant="outline">{eventTypeLabel(event, locale)}</Badge>
                 <h4>{event.title}</h4>
-                <p>
-                  <MapPin aria-hidden="true" /> {event.location}
+                <p className="event-card__dates">
+                  <Sun aria-hidden="true" /> {formatDate(date, locale)}
+                  <span className="lunar-chip">{formatLunarDate(date, locale)}</span>
                 </p>
-                {event.calendar === 'lunar' && (
-                  <small>
-                    {translate(locale, 'lunarVerified', {
-                      day: event.day,
-                      month: event.month,
-                    })}
-                  </small>
-                )}
+                {event.location && <p><MapPin aria-hidden="true" /> {event.location}</p>}
+                {event.calendar === 'lunar' && <small>{translate(locale, 'lunarVerified', { day: event.day, month: event.month })}</small>}
               </div>
-            </article>
+            </button>
           ))}
           {!datedEvents.length && (
             <p className="event-empty">
@@ -762,6 +871,12 @@ function CalendarView({
           )}
         </aside>
       </div>
+      <EventDetail
+        event={selectedEvent?.event ?? null}
+        date={selectedEvent?.date ?? null}
+        locale={locale}
+        onOpenChange={(open) => !open && setSelectedEvent(null)}
+      />
     </section>
   );
 }

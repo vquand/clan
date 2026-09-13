@@ -33,6 +33,7 @@ function initialData(): AdminData {
       },
     ],
     events: [],
+    locations: [],
   };
 }
 
@@ -41,6 +42,7 @@ test('admin can sign in and manage relationships and unassigned events', async (
 }, testInfo) => {
   let authenticated = false;
   let data = initialData();
+  let lastEventBody: Record<string, unknown> | null = null;
 
   await page.route('**/api/admin/session', async (route) => {
     await route.fulfill({ json: { authenticated } });
@@ -135,12 +137,22 @@ test('admin can sign in and manage relationships and unassigned events', async (
   });
   await page.route('**/api/admin/events', async (route) => {
     const body = route.request().postDataJSON();
+    lastEventBody = body;
     const event: AdminData['events'][number] = {
       ...body,
       id: '10000000-0000-4000-8000-000000000001',
     };
     data = { ...data, events: [event] };
     await route.fulfill({ status: 201, json: event });
+  });
+  await page.route('**/api/admin/locations', async (route) => {
+    const body = route.request().postDataJSON();
+    const location = {
+      ...body,
+      id: '20000000-0000-4000-8000-000000000001',
+    };
+    data = { ...data, locations: [...(data.locations ?? []), location] };
+    await route.fulfill({ status: 201, json: location });
   });
   await page.route('**/api/admin/logout', async (route) => {
     authenticated = false;
@@ -255,14 +267,46 @@ test('admin can sign in and manage relationships and unassigned events', async (
     false,
   );
 
+  await page.getByRole('tab', { name: 'Locations' }).click();
+  await page.getByRole('button', { name: 'Add location' }).click();
+  const locationDialog = page.getByRole('dialog');
+  await locationDialog.getByLabel('Name *').fill('Nhà văn hóa họ Đỗ');
+  await locationDialog.getByLabel('Address').fill('123 Family Road');
+  await locationDialog
+    .getByLabel('Google Maps shared URL')
+    .fill('https://maps.google.com/?q=family');
+  await locationDialog.getByRole('button', { name: 'Add location' }).click();
+  await expect(page.getByText('Nhà văn hóa họ Đỗ')).toBeVisible();
+
   await page.getByRole('tab', { name: 'Events' }).click();
   await page.getByRole('button', { name: 'Add event' }).click();
   await page.getByLabel('Title *').fill('Open family day');
   await page.getByLabel('Day *').fill('12');
   await page.getByLabel('Month *').fill('10');
+  await page.getByLabel('Location').selectOption('20000000-0000-4000-8000-000000000001');
   await page.getByRole('button', { name: 'Add event' }).click();
   await expect(page.getByText('Open family day')).toBeVisible();
   await expect(page.getByText('0 related members')).toBeVisible();
+  expect(lastEventBody).toMatchObject({
+    locationId: '20000000-0000-4000-8000-000000000001',
+    locationName: 'Nhà văn hóa họ Đỗ',
+  });
+
+  await page.getByRole('button', { name: 'Add event' }).click();
+  await page.getByLabel('Title *').fill('Custom location gathering');
+  await page.getByLabel('Day *').fill('15');
+  await page.getByLabel('Month *').fill('11');
+  await page.getByLabel('Location').selectOption('custom');
+  await page.getByLabel('Location name *').fill('New family garden');
+  page.once('dialog', (dialog) => {
+    expect(dialog.message()).toContain('New family garden');
+    void dialog.accept();
+  });
+  await page.getByRole('button', { name: 'Add event' }).click();
+  expect(lastEventBody).toMatchObject({
+    locationName: 'New family garden',
+    saveLocation: true,
+  });
   await page.screenshot({
     path: testInfo.outputPath('admin.png'),
     fullPage: true,

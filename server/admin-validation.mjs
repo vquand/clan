@@ -220,7 +220,8 @@ export function normalizeEventInput(input) {
   const day = optionalInteger(input.day, 'day', { min: 1, max: 31 });
   const month = optionalInteger(input.month, 'month', { min: 1, max: 12 });
   if (day === null || month === null) throw new Error('day and month are required');
-  if (requiredEnumValue(input.calendar, 'calendar', calendars) === 'lunar' && day > 30) {
+  const calendar = requiredEnumValue(input.calendar, 'calendar', calendars);
+  if (calendar === 'lunar' && day > 30) {
     throw new Error('Lunar event days must be from 1 to 30');
   }
   const locationId = optionalString(input.locationId, 'locationId', 80);
@@ -237,7 +238,7 @@ export function normalizeEventInput(input) {
   return {
     title: requiredString(input.title, 'title', 240),
     type: requiredEnumValue(input.type, 'type', eventTypes),
-    calendar: requiredEnumValue(input.calendar, 'calendar', calendars),
+    calendar,
     day,
     month,
     recurrence,

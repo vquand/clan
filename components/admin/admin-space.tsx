@@ -3,6 +3,7 @@
 import {
   CalendarDays,
   LogOut,
+  MapPin,
   Pencil,
   Plus,
   Search,
@@ -16,33 +17,50 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AdminEventForm } from '@/components/admin/admin-event-form';
 import { AdminAvatarPicker } from '@/components/admin/admin-avatar-picker';
 import { AdminLogin } from '@/components/admin/admin-login';
+import { AdminLocationForm } from '@/components/admin/admin-location-form';
 import { AdminMemberForm } from '@/components/admin/admin-member-form';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AdminApiError,
   createEvent,
+  createLocation,
   createMember,
   deleteEvent,
+  deleteLocation,
   deleteMember,
   fetchAdminData,
   getAdminSession,
   logoutAdmin,
   updateEvent,
+  updateLocation,
   updateMember,
 } from '@/lib/admin-api';
-import type { AdminEventInput, AdminMemberInput } from '@/lib/admin-contract';
-import type { ClanEvent, Member } from '@/data/types';
+import type {
+  AdminEventInput,
+  AdminLocationInput,
+  AdminMemberInput,
+  AdminData,
+} from '@/lib/admin-contract';
+import type { ClanEvent, ClanLocation, Member } from '@/data/types';
 
 type AdminStatus = 'checking' | 'login' | 'loading' | 'ready' | 'error';
-type AdminSection = 'members' | 'events';
+type AdminSection = 'members' | 'events' | 'locations';
 
 function getErrorMessage(error: unknown) {
   if (error instanceof AdminApiError) return error.message;
   return 'The admin service is temporarily unavailable.';
 }
 
-function AdminSummary({ members, events }: { members: number; events: number }) {
+function AdminSummary({
+  members,
+  events,
+  locations,
+}: {
+  members: number;
+  events: number;
+  locations: number;
+}) {
   return (
     <div className="admin-summary" aria-label="Archive totals">
       <div>
@@ -54,6 +72,11 @@ function AdminSummary({ members, events }: { members: number; events: number }) 
         <CalendarDays aria-hidden="true" />
         <strong>{events}</strong>
         <span>Events</span>
+      </div>
+      <div>
+        <MapPin aria-hidden="true" />
+        <strong>{locations}</strong>
+        <span>Locations</span>
       </div>
     </div>
   );
@@ -140,7 +163,7 @@ function EventRecords({
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     return events.filter((event) =>
-      [event.title, event.location, event.description]
+      [event.title, event.location, event.locationAddress, event.description]
         .filter(Boolean)
         .some((value) => value!.toLocaleLowerCase().includes(needle)),
     );
@@ -181,15 +204,69 @@ function EventRecords({
   );
 }
 
+function LocationRecords({
+  locations,
+  query,
+  onEdit,
+  onDelete,
+}: {
+  locations: ClanLocation[];
+  query: string;
+  onEdit: (location: ClanLocation) => void;
+  onDelete: (location: ClanLocation) => void;
+}) {
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    return locations.filter((location) =>
+      [location.name, location.address, location.googleMapUrl]
+        .filter(Boolean)
+        .some((value) => value!.toLocaleLowerCase().includes(needle)),
+    );
+  }, [locations, query]);
+  if (!filtered.length) {
+    return <p className="admin-empty">No locations match this search.</p>;
+  }
+  return (
+    <ul className="admin-record-list">
+      {filtered.map((location) => (
+        <li className="admin-record" key={location.id}>
+          <span className="admin-event-icon admin-event-icon--location">
+            <MapPin aria-hidden="true" />
+          </span>
+          <div className="admin-record-copy">
+            <h3>{location.name}</h3>
+            <p>{location.address || 'No address recorded'}</p>
+          </div>
+          <div className="admin-record-actions">
+            <Button variant="outline" size="sm" onClick={() => onEdit(location)}>
+              <Pencil aria-hidden="true" /> Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Remove ${location.name}`}
+              onClick={() => onDelete(location)}
+            >
+              <Trash2 aria-hidden="true" />
+            </Button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function AdminSpace() {
   const [status, setStatus] = useState<AdminStatus>('checking');
-  const [data, setData] = useState<{ members: Member[]; events: ClanEvent[] } | null>(null);
+  const [data, setData] = useState<AdminData | null>(null);
   const [activeSection, setActiveSection] = useState<AdminSection>('members');
   const [query, setQuery] = useState('');
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [editingEvent, setEditingEvent] = useState<ClanEvent | null>(null);
+  const [editingLocation, setEditingLocation] = useState<ClanLocation | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
 
@@ -225,6 +302,7 @@ export function AdminSpace() {
       await loadData();
       setMemberDialogOpen(false);
       setEventDialogOpen(false);
+      setLocationDialogOpen(false);
       return true;
     } catch (caughtError) {
       setError(getErrorMessage(caughtError));
@@ -242,6 +320,16 @@ export function AdminSpace() {
   async function removeEvent(event: ClanEvent) {
     if (!window.confirm(`Remove ${event.title}?`)) return;
     await afterMutation(() => deleteEvent(event.id));
+  }
+
+  async function removeLocation(location: ClanLocation) {
+    if (
+      !window.confirm(
+        `Remove ${location.name}? Existing events will keep their address snapshot.`,
+      )
+    )
+      return;
+    await afterMutation(() => deleteLocation(location.id));
   }
 
   if (status === 'checking' || status === 'loading') {
@@ -270,9 +358,13 @@ export function AdminSpace() {
     ? editingMember
       ? `Edit ${editingMember.fullName}`
       : 'Add a member'
-    : editingEvent
-      ? `Edit ${editingEvent.title}`
-      : 'Add an event';
+    : eventDialogOpen
+      ? editingEvent
+        ? `Edit ${editingEvent.title}`
+        : 'Add an event'
+      : editingLocation
+        ? `Edit ${editingLocation.name}`
+        : 'Add a location';
 
   return (
     <main className="admin-shell">
@@ -305,7 +397,11 @@ export function AdminSpace() {
             Maintain people, relationship links, portraits, and dates from one place.
           </p>
         </div>
-        <AdminSummary members={data.members.length} events={data.events.length} />
+        <AdminSummary
+          members={data.members.length}
+          events={data.events.length}
+          locations={data.locations?.length ?? 0}
+        />
       </section>
       {error && <p className="admin-error admin-error--banner" role="alert">{error}</p>}
       <section className="admin-panel" aria-label="Archive records">
@@ -333,6 +429,17 @@ export function AdminSpace() {
             >
               <CalendarDays aria-hidden="true" /> Events
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeSection === 'locations'}
+              onClick={() => {
+                setActiveSection('locations');
+                setQuery('');
+              }}
+            >
+              <MapPin aria-hidden="true" /> Locations
+            </button>
           </div>
           <div className="admin-toolbar-actions">
             <div className="admin-search">
@@ -352,13 +459,21 @@ export function AdminSpace() {
                 if (activeSection === 'members') {
                   setEditingMember(null);
                   setMemberDialogOpen(true);
-                } else {
+                } else if (activeSection === 'events') {
                   setEditingEvent(null);
                   setEventDialogOpen(true);
+                } else {
+                  setEditingLocation(null);
+                  setLocationDialogOpen(true);
                 }
               }}
             >
-              <Plus aria-hidden="true" /> Add {activeSection === 'members' ? 'member' : 'event'}
+              <Plus aria-hidden="true" /> Add{' '}
+              {activeSection === 'members'
+                ? 'member'
+                : activeSection === 'events'
+                  ? 'event'
+                  : 'location'}
             </Button>
           </div>
         </div>
@@ -376,7 +491,7 @@ export function AdminSpace() {
               afterMutation(() => updateMember(member.id, input))
             }
           />
-        ) : (
+        ) : activeSection === 'events' ? (
           <EventRecords
             events={data.events}
             query={query}
@@ -385,6 +500,16 @@ export function AdminSpace() {
               setEventDialogOpen(true);
             }}
             onDelete={removeEvent}
+          />
+        ) : (
+          <LocationRecords
+            locations={data.locations ?? []}
+            query={query}
+            onEdit={(location) => {
+              setEditingLocation(location);
+              setLocationDialogOpen(true);
+            }}
+            onDelete={removeLocation}
           />
         )}
       </section>
@@ -426,6 +551,7 @@ export function AdminSpace() {
             key={editingEvent?.id ?? 'new-event'}
             event={editingEvent}
             members={data.members}
+            locations={data.locations ?? []}
             pending={pending}
             onCancel={() => setEventDialogOpen(false)}
             onSubmit={(input: AdminEventInput) =>
@@ -434,6 +560,31 @@ export function AdminSpace() {
                   editingEvent
                     ? updateEvent(editingEvent.id, input)
                     : createEvent(input),
+                );
+              })()
+            }
+          />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
+        <DialogContent className="admin-dialog">
+          <DialogHeader>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            <DialogDescription>
+              Save the places that matter to the clan so events can reuse them.
+            </DialogDescription>
+          </DialogHeader>
+          <AdminLocationForm
+            key={editingLocation?.id ?? 'new-location'}
+            location={editingLocation}
+            pending={pending}
+            onCancel={() => setLocationDialogOpen(false)}
+            onSubmit={(input: AdminLocationInput) =>
+              (async () => {
+                await afterMutation(() =>
+                  editingLocation
+                    ? updateLocation(editingLocation.id, input)
+                    : createLocation(input),
                 );
               })()
             }

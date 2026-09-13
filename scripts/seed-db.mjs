@@ -32,7 +32,8 @@ if (
   !data ||
   typeof data !== 'object' ||
   !Array.isArray(data.members) ||
-  !Array.isArray(data.events)
+  !Array.isArray(data.events) ||
+  (data.locations !== undefined && !Array.isArray(data.locations))
 ) {
   throw new Error('Seed data must be an object with members and events arrays');
 }
@@ -41,6 +42,7 @@ const sql = neon(databaseUrl);
 const normalized = normalizeSeedData(data, randomUUID);
 await sql.transaction([
   sql`DELETE FROM events`,
+  sql`DELETE FROM clan_locations`,
   sql`DELETE FROM members`,
   sql`
     INSERT INTO members (
@@ -82,16 +84,24 @@ await sql.transaction([
     )
   `,
   sql`
+    INSERT INTO clan_locations (id, name, address, google_map_url)
+    SELECT id::uuid, name, address, google_map_url
+    FROM jsonb_to_recordset(${JSON.stringify(normalized.locations)}::jsonb) AS item(
+      id text, name text, address text, google_map_url text
+    )
+  `,
+  sql`
     INSERT INTO events (
       id, title, type, calendar, day, month, recurrence, event_year,
-      location, description
+      location, location_id, location_address, location_google_map_url, description
     )
     SELECT
       id::uuid, title, type, calendar, day, month, recurrence, event_year,
-      location, description
+      location, location_id::uuid, location_address, location_google_map_url, description
     FROM jsonb_to_recordset(${JSON.stringify(normalized.events)}::jsonb) AS item(
       id text, title text, type text, calendar text, day integer,
       month integer, recurrence text, event_year integer, location text,
+      location_id text, location_address text, location_google_map_url text,
       description text
     )
   `,

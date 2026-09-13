@@ -6,12 +6,13 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import type { ClanEvent, Member } from '@/data/types';
+import type { ClanEvent, ClanLocation, Member } from '@/data/types';
 import type { AdminEventInput } from '@/lib/admin-contract';
 
 interface EventFormProps {
   event: ClanEvent | null;
   members: Member[];
+  locations: ClanLocation[];
   pending: boolean;
   onCancel: () => void;
   onSubmit: (input: AdminEventInput) => Promise<void>;
@@ -25,13 +26,18 @@ interface EventFormState {
   month: string;
   recurrence: AdminEventInput['recurrence'];
   year: string;
-  location: string;
+  locationMode: '' | 'saved' | 'custom';
+  locationId: string;
+  locationName: string;
+  locationAddress: string;
+  locationGoogleMapUrl: string;
   description: string;
   relatedMemberIds: string[];
   solarDates: string;
 }
 
-function toForm(event: ClanEvent | null): EventFormState {
+function toForm(event: ClanEvent | null, locations: ClanLocation[]): EventFormState {
+  const savedLocation = locations.find((location) => location.id === event?.locationId);
   return {
     title: event?.title ?? '',
     type: event?.type ?? 'gathering',
@@ -40,7 +46,12 @@ function toForm(event: ClanEvent | null): EventFormState {
     month: event?.month.toString() ?? '',
     recurrence: event?.recurrence ?? 'annual',
     year: event?.year?.toString() ?? '',
-    location: event?.location ?? '',
+    locationMode: event?.locationId ? 'saved' : event?.location ? 'custom' : '',
+    locationId: event?.locationId ?? '',
+    locationName: event?.location ?? savedLocation?.name ?? '',
+    locationAddress: event?.locationAddress ?? savedLocation?.address ?? '',
+    locationGoogleMapUrl:
+      event?.locationGoogleMapUrl ?? savedLocation?.googleMapUrl ?? '',
     description: event?.description ?? '',
     relatedMemberIds: event?.relatedMemberIds ?? [],
     solarDates: Object.entries(event?.solarDates ?? {})
@@ -61,11 +72,12 @@ function parseSolarDates(value: string) {
 export function AdminEventForm({
   event,
   members,
+  locations,
   pending,
   onCancel,
   onSubmit,
 }: EventFormProps) {
-  const [form, setForm] = useState<EventFormState>(() => toForm(event));
+  const [form, setForm] = useState<EventFormState>(() => toForm(event, locations));
   function setField<Key extends keyof EventFormState>(
     key: Key,
     value: EventFormState[Key],
@@ -73,8 +85,46 @@ export function AdminEventForm({
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function chooseLocation(value: string) {
+    if (value === 'custom') {
+      setForm((current) => ({
+        ...current,
+        locationMode: 'custom',
+        locationId: '',
+      }));
+      return;
+    }
+    const selected = locations.find((location) => location.id === value);
+    setForm((current) => ({
+      ...current,
+      locationMode: selected ? 'saved' : '',
+      locationId: selected?.id ?? '',
+      locationName: selected?.name ?? '',
+      locationAddress: selected?.address ?? '',
+      locationGoogleMapUrl: selected?.googleMapUrl ?? '',
+    }));
+  }
+
   async function submit(eventToSubmit: SubmitEvent<HTMLFormElement>) {
     eventToSubmit.preventDefault();
+    const selectedLocation = locations.find(
+      (location) => location.id === form.locationId,
+    );
+    const locationName =
+      form.locationMode === 'saved'
+        ? selectedLocation?.name ?? form.locationName
+        : form.locationMode === 'custom'
+          ? form.locationName.trim()
+          : '';
+    const isKnownLocation = locations.some(
+      (location) =>
+        location.name.trim().toLocaleLowerCase() === locationName.toLocaleLowerCase(),
+    );
+    const saveLocation =
+      form.locationMode === 'custom' &&
+      Boolean(locationName) &&
+      !isKnownLocation &&
+      window.confirm(`Add "${locationName}" to the important location list?`);
     await onSubmit({
       title: form.title,
       type: form.type,
@@ -83,7 +133,12 @@ export function AdminEventForm({
       month: form.month,
       recurrence: form.recurrence,
       year: form.year || undefined,
-      location: form.location,
+      location: locationName,
+      locationId: form.locationMode === 'saved' ? form.locationId : undefined,
+      locationName: locationName || undefined,
+      locationAddress: form.locationAddress || undefined,
+      locationGoogleMapUrl: form.locationGoogleMapUrl || undefined,
+      saveLocation,
       description: form.description || undefined,
       relatedMemberIds: form.relatedMemberIds,
       solarDates: parseSolarDates(form.solarDates),
@@ -185,12 +240,58 @@ export function AdminEventForm({
         </div>
         <div className="admin-field admin-field--wide">
           <label htmlFor="event-location">Location</label>
-          <Input
+          <select
             id="event-location"
-            value={form.location}
-            onChange={(eventToChange) => setField('location', eventToChange.target.value)}
-          />
+            className="admin-select"
+            value={form.locationMode === 'custom' ? 'custom' : form.locationId}
+            onChange={(eventToChange) => chooseLocation(eventToChange.target.value)}
+          >
+            <option value="">No location</option>
+            {locations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+            <option value="custom">Enter a new location…</option>
+          </select>
         </div>
+        {form.locationMode === 'custom' && (
+          <>
+            <div className="admin-field admin-field--wide">
+              <label htmlFor="event-location-name">Location name *</label>
+              <Input
+                id="event-location-name"
+                required
+                value={form.locationName}
+                onChange={(eventToChange) =>
+                  setField('locationName', eventToChange.target.value)
+                }
+              />
+            </div>
+            <div className="admin-field admin-field--wide">
+              <label htmlFor="event-location-address">Address</label>
+              <Input
+                id="event-location-address"
+                value={form.locationAddress}
+                onChange={(eventToChange) =>
+                  setField('locationAddress', eventToChange.target.value)
+                }
+              />
+            </div>
+            <div className="admin-field admin-field--wide">
+              <label htmlFor="event-location-map-url">Google Maps shared URL</label>
+              <Input
+                id="event-location-map-url"
+                type="url"
+                placeholder="https://maps.google.com/..."
+                value={form.locationGoogleMapUrl}
+                onChange={(eventToChange) =>
+                  setField('locationGoogleMapUrl', eventToChange.target.value)
+                }
+              />
+            </div>
+          </>
+        )}
         <div className="admin-field admin-field--wide">
           <label htmlFor="event-description">Description</label>
           <Textarea
