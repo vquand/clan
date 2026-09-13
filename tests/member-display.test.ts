@@ -52,7 +52,7 @@ void test('uses the local calendar date for a living member age', () => {
         status: 'living',
         birthDate: '1976-09-13',
       },
-      new Date('2026-09-13T00:30:00+07:00'),
+      new Date(2026, 8, 13, 0, 30),
     ),
     '50',
   );
@@ -90,14 +90,14 @@ void test('calculates age when a member has birth data but no life status', () =
   assert.equal(
     formatMemberAge(
       { ...baseMember, birthYear: 1952 },
-      new Date('2026-09-13T00:30:00+07:00'),
+      new Date(2026, 8, 13, 0, 30),
     ),
     '74',
   );
   assert.equal(
     formatMemberAge(
       { ...baseMember, birthDate: '1952-09-13' },
-      new Date('2026-09-13T00:30:00+07:00'),
+      new Date(2026, 8, 13, 0, 30),
     ),
     '74',
   );
