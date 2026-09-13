@@ -238,7 +238,7 @@
 .language-control,
 .reading-control {
   display: grid;
-  grid-template-columns: repeat(3, minmax(2.75rem, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   flex: 1 1 9rem;
   margin: 0;
@@ -253,32 +253,37 @@
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.language-control button,
-.reading-control button {
+.preference-buttons {
+  display: none;
+  grid-template-columns: repeat(3, minmax(2.75rem, 1fr));
+}
+.preference-select,
+.preference-buttons button {
   min-height: 2.75rem;
   color: var(--muted-foreground);
   background: var(--card);
   border: 1px solid var(--border);
 }
-.language-control button:first-of-type,
-.reading-control button:first-of-type {
+.preference-select {
+  width: 100%;
+  padding: 0 0.7rem;
+  border-radius: 0.55rem;
+}
+.preference-buttons button:first-of-type {
   border-radius: 0.55rem 0 0 0.55rem;
 }
-.language-control button:last-of-type,
-.reading-control button:last-of-type {
+.preference-buttons button:last-of-type {
   border-radius: 0 0.55rem 0.55rem 0;
 }
-.language-control button + button,
-.reading-control button + button {
+.preference-buttons button + button {
   border-left: 0;
 }
-.language-control button[aria-pressed='true'],
-.reading-control button[aria-pressed='true'] {
+.preference-buttons button[aria-pressed='true'] {
   color: var(--primary-foreground);
   background: var(--primary);
 }
-.language-control button:focus-visible,
-.reading-control button:focus-visible {
+.preference-select:focus-visible,
+.preference-buttons button:focus-visible {
   outline: 3px solid oklch(0.65 0.11 49 / 0.45);
   outline-offset: 2px;
 }
@@ -965,6 +970,12 @@
   .preference-controls {
     flex-wrap: nowrap;
     width: auto;
+  }
+  .preference-buttons {
+    display: grid;
+  }
+  .preference-select {
+    display: none;
   }
   .language-control,
   .reading-control {

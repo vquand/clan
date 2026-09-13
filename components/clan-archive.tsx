@@ -821,45 +821,77 @@ export function ClanArchive({
               <legend className="control-label">
                 {translate(locale, 'languageLabel')}
               </legend>
-              {LOCALES.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-label={
-                    value === 'vi'
-                      ? 'Tiếng Việt'
-                      : value === 'en'
-                        ? 'English'
-                        : 'Français'
-                  }
-                  aria-pressed={locale === value}
-                  onClick={() => setLocale(value)}
-                >
-                  {value.toUpperCase()}
-                </button>
-              ))}
+              <select
+                className="preference-select"
+                aria-label={translate(locale, 'languageLabel')}
+                value={locale}
+                onChange={(event) => setLocale(event.target.value as Locale)}
+              >
+                <option value="vi">Tiếng Việt</option>
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+              </select>
+              <div className="preference-buttons">
+                {LOCALES.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-label={
+                      value === 'vi'
+                        ? 'Tiếng Việt'
+                        : value === 'en'
+                          ? 'English'
+                          : 'Français'
+                    }
+                    aria-pressed={locale === value}
+                    onClick={() => setLocale(value)}
+                  >
+                    {value.toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </fieldset>
             <fieldset className="reading-control">
               <legend className="control-label">
                 {translate(locale, 'readingSizeLabel')}
               </legend>
-              {(
-                [
-                  ['standard', 'A', 'readingStandard'],
-                  ['large', 'A+', 'readingLarge'],
-                  ['extra-large', 'A++', 'readingExtraLarge'],
-                ] as const
-              ).map(([value, shortLabel, labelKey]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-label={translate(locale, labelKey)}
-                  aria-pressed={readingSize === value}
-                  onClick={() => setReadingSize(value)}
-                >
-                  {shortLabel}
-                </button>
-              ))}
+              <select
+                className="preference-select"
+                aria-label={translate(locale, 'readingSizeLabel')}
+                value={readingSize}
+                onChange={(event) =>
+                  setReadingSize(event.target.value as ReadingSize)
+                }
+              >
+                <option value="standard">
+                  {translate(locale, 'readingStandard')}
+                </option>
+                <option value="large">
+                  {translate(locale, 'readingLarge')}
+                </option>
+                <option value="extra-large">
+                  {translate(locale, 'readingExtraLarge')}
+                </option>
+              </select>
+              <div className="preference-buttons">
+                {(
+                  [
+                    ['standard', 'A', 'readingStandard'],
+                    ['large', 'A+', 'readingLarge'],
+                    ['extra-large', 'A++', 'readingExtraLarge'],
+                  ] as const
+                ).map(([value, shortLabel, labelKey]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-label={translate(locale, labelKey)}
+                    aria-pressed={readingSize === value}
+                    onClick={() => setReadingSize(value)}
+                  >
+                    {shortLabel}
+                  </button>
+                ))}
+              </div>
             </fieldset>
           </div>
         </div>

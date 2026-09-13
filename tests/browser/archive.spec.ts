@@ -111,13 +111,25 @@ test('language switching works and the reading size persists locally', async ({
   await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
   await expect(page.locator('html')).toHaveAttribute('lang', 'vi');
 
-  const english = page.getByRole('button', { name: 'English' });
-  await english.click();
-  await expect(english).toHaveAttribute('aria-pressed', 'true');
+  if (testInfo.project.name === 'mobile') {
+    const languageSelect = page.getByRole('combobox', { name: 'Ngôn ngữ' });
+    const readingSizeSelect = page.getByRole('combobox', { name: 'Cỡ chữ' });
+    await expect(languageSelect).toBeVisible();
+    await expect(readingSizeSelect).toBeVisible();
+    await expect(page.locator('.language-control button').first()).toBeHidden();
+    await expect(page.locator('.reading-control button').first()).toBeHidden();
+    await languageSelect.selectOption('en');
+    await page
+      .getByRole('combobox', { name: 'Text size' })
+      .selectOption('extra-large');
+  } else {
+    const english = page.getByRole('button', { name: 'English' });
+    await english.click();
+    await expect(english).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('button', { name: 'Extra large text' }).click();
+  }
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('tab', { name: 'Family tree' })).toBeVisible();
-
-  await page.getByRole('button', { name: 'Extra large text' }).click();
   await expect(page.locator('html')).toHaveAttribute(
     'data-reading-size',
     'extra-large',
@@ -132,7 +144,11 @@ test('language switching works and the reading size persists locally', async ({
     fullPage: true,
   });
 
-  await page.getByRole('button', { name: 'Français' }).click();
+  if (testInfo.project.name === 'mobile') {
+    await page.getByRole('combobox', { name: 'Language' }).selectOption('fr');
+  } else {
+    await page.getByRole('button', { name: 'Français' }).click();
+  }
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
   await expect(page.getByRole('tab', { name: 'Calendrier' })).toBeVisible();
 
