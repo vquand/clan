@@ -414,6 +414,113 @@ test('widens tree people pills to display complete Vietnamese names', async ({
   );
 });
 
+test('pans the family tree viewport with mouse and touch drags', async ({
+  page,
+}, testInfo) => {
+  const treeMembers = [
+    {
+      id: 'founder',
+      fullName: 'Đỗ Văn Tiền',
+      gender: 'male',
+      clanRelation: 'lineage',
+      generation: 0,
+      parentIds: [],
+      spouseIds: [],
+    },
+    ...Array.from({ length: 10 }, (_, index) => ({
+      id: `child-${index}`,
+      fullName: `Đỗ Văn Thành viên ${index + 1}`,
+      gender: index % 2 === 0 ? 'male' : 'female',
+      clanRelation: 'lineage',
+      generation: 1,
+      parentIds: ['founder'],
+      spouseIds: [],
+    })),
+    ...Array.from({ length: 10 }, (_, index) => ({
+      id: `descendant-${index}`,
+      fullName: `Đỗ Văn Hậu duệ ${index + 1}`,
+      gender: 'male',
+      clanRelation: 'lineage',
+      generation: index + 2,
+      parentIds: [index === 0 ? 'child-0' : `descendant-${index - 1}`],
+      spouseIds: [],
+    })),
+  ];
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({ json: { members: treeMembers, events: [] } });
+  });
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
+  await page.getByRole('tab', { name: 'Gia phả' }).click();
+
+  const viewport = page.locator('.tree-scroll');
+  await expect(viewport).toBeVisible();
+  await viewport.locator('.person-pill').first().click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  const metricsBefore = await viewport.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    clientHeight: element.clientHeight,
+    scrollLeft: element.scrollLeft,
+    scrollTop: element.scrollTop,
+    scrollWidth: element.scrollWidth,
+    scrollHeight: element.scrollHeight,
+  }));
+  expect(metricsBefore.scrollWidth).toBeGreaterThan(metricsBefore.clientWidth);
+  expect(metricsBefore.scrollHeight).toBeGreaterThan(metricsBefore.clientHeight);
+
+  await viewport.scrollIntoViewIfNeeded();
+  const box = await viewport.boundingBox();
+  if (!box) throw new Error('Tree viewport is missing a bounding box');
+  const start = {
+    x: box.x + box.width * 0.75,
+    y: box.y + box.height * 0.75,
+  };
+  const end = {
+    x: box.x + box.width * 0.25,
+    y: box.y + box.height * 0.25,
+  };
+  if (testInfo.project.name === 'mobile') {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ ...start, id: 1 }],
+    });
+    for (let step = 1; step <= 5; step += 1) {
+      const progress = step / 5;
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [
+          {
+            id: 1,
+            x: start.x + (end.x - start.x) * progress,
+            y: start.y + (end.y - start.y) * progress,
+          },
+        ],
+      });
+    }
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
+  } else {
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(end.x, end.y, { steps: 5 });
+    await page.mouse.up();
+  }
+
+  const metricsAfter = await viewport.evaluate((element) => ({
+    scrollLeft: element.scrollLeft,
+    scrollTop: element.scrollTop,
+    touchAction: getComputedStyle(element).touchAction,
+  }));
+  expect(metricsAfter.scrollLeft).toBeGreaterThan(metricsBefore.scrollLeft);
+  expect(metricsAfter.scrollTop).toBeGreaterThan(metricsBefore.scrollTop);
+  expect(metricsAfter.touchAction).toBe('none');
+});
+
 test('language switching works and the reading size persists locally', async ({
   page,
 }, testInfo) => {

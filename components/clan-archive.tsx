@@ -20,7 +20,7 @@ import {
   Users,
 } from 'lucide-react';
 import Image from 'next/image';
-import type { SubmitEvent } from 'react';
+import type { PointerEvent as ReactPointerEvent, SubmitEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -598,6 +598,16 @@ function TreeView({
   onSelect: (member: Member) => void;
 }) {
   const treeScrollRef = useRef<HTMLElement>(null);
+  const treePointerRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressTreeClickRef = useRef(false);
+  const [isPanning, setIsPanning] = useState(false);
   const roots = members.filter(
     (member) =>
       member.clanRelation === 'lineage' &&
@@ -615,6 +625,58 @@ function TreeView({
     });
     return () => cancelAnimationFrame(frame);
   }, []);
+
+  function handleTreePointerDown(event: ReactPointerEvent<HTMLElement>) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    const container = treeScrollRef.current;
+    if (!container) return;
+
+    treePointerRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: container.scrollLeft,
+      scrollTop: container.scrollTop,
+      moved: false,
+    };
+  }
+
+  function handleTreePointerMove(event: ReactPointerEvent<HTMLElement>) {
+    const pointer = treePointerRef.current;
+    const container = treeScrollRef.current;
+    if (!pointer || pointer.pointerId !== event.pointerId || !container) return;
+
+    const deltaX = event.clientX - pointer.startX;
+    const deltaY = event.clientY - pointer.startY;
+    if (!pointer.moved && Math.hypot(deltaX, deltaY) < 4) return;
+
+    pointer.moved = true;
+    if (!container.hasPointerCapture(event.pointerId))
+      container.setPointerCapture(event.pointerId);
+    suppressTreeClickRef.current = true;
+    setIsPanning(true);
+    event.preventDefault();
+    container.scrollLeft = pointer.scrollLeft - deltaX;
+    container.scrollTop = pointer.scrollTop - deltaY;
+  }
+
+  function finishTreePointer(event: ReactPointerEvent<HTMLElement>) {
+    const pointer = treePointerRef.current;
+    const container = treeScrollRef.current;
+    if (!pointer || pointer.pointerId !== event.pointerId) return;
+    if (container?.hasPointerCapture(event.pointerId))
+      container.releasePointerCapture(event.pointerId);
+    treePointerRef.current = null;
+    setIsPanning(false);
+  }
+
+  function handleTreeClickCapture(event: React.MouseEvent<HTMLElement>) {
+    if (!suppressTreeClickRef.current) return;
+    suppressTreeClickRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   return (
     <section className="view-panel tree-view" aria-labelledby="tree-heading">
       <div className="section-heading">
@@ -629,9 +691,14 @@ function TreeView({
         <p>{translate(locale, 'treeIntro')}</p>
       </div>
       <section
-        className="tree-scroll"
+        className={`tree-scroll${isPanning ? ' tree-scroll--panning' : ''}`}
         aria-label={translate(locale, 'treeLabel')}
         ref={treeScrollRef}
+        onPointerDown={handleTreePointerDown}
+        onPointerMove={handleTreePointerMove}
+        onPointerUp={finishTreePointer}
+        onPointerCancel={finishTreePointer}
+        onClickCapture={handleTreeClickCapture}
       >
         <div className="family-tree">
           <ul className="tree-roots">
