@@ -50,6 +50,16 @@ export interface ClanEvent {
   year?: number;
   relatedMemberIds: string[];
   location: string;
+  locationId?: string;
+  locationAddress?: string;
+  locationGoogleMapUrl?: string;
   description?: string;
   solarDates?: Record<number, string>;
+}
+
+export interface ClanLocation {
+  id: string;
+  name: string;
+  address: string;
+  googleMapUrl?: string;
 }

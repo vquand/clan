@@ -51,6 +51,21 @@ function optionalDate(value, field) {
   return result;
 }
 
+function optionalUrl(value, field) {
+  const result = optionalString(value, field, 2_000);
+  if (result === null) return null;
+  let url;
+  try {
+    url = new URL(result);
+  } catch {
+    throw new Error(`${field} must be a valid URL`);
+  }
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error(`${field} must use HTTP or HTTPS`);
+  }
+  return result;
+}
+
 function enumValue(value, field, allowed, defaultValue = null) {
   if (value === undefined || value === null || value === '') return defaultValue;
   if (typeof value !== 'string' || !allowed.has(value)) {
@@ -186,6 +201,15 @@ function normalizeSolarDates(value) {
   );
 }
 
+export function normalizeLocationInput(input) {
+  if (!isRecord(input)) throw new Error('Location input must be an object');
+  return {
+    name: requiredString(input.name, 'name', 240),
+    address: optionalString(input.address, 'address', 500) ?? '',
+    google_map_url: optionalUrl(input.googleMapUrl, 'googleMapUrl'),
+  };
+}
+
 export function normalizeEventInput(input) {
   if (!isRecord(input)) throw new Error('Event input must be an object');
   const recurrence = requiredEnumValue(input.recurrence, 'recurrence', recurrences);
@@ -196,6 +220,20 @@ export function normalizeEventInput(input) {
   const day = optionalInteger(input.day, 'day', { min: 1, max: 31 });
   const month = optionalInteger(input.month, 'month', { min: 1, max: 12 });
   if (day === null || month === null) throw new Error('day and month are required');
+  if (requiredEnumValue(input.calendar, 'calendar', calendars) === 'lunar' && day > 30) {
+    throw new Error('Lunar event days must be from 1 to 30');
+  }
+  const locationId = optionalString(input.locationId, 'locationId', 80);
+  const locationName = optionalString(input.locationName, 'locationName', 240);
+  const locationAddress = optionalString(input.locationAddress, 'locationAddress', 500);
+  const locationGoogleMapUrl = optionalUrl(
+    input.locationGoogleMapUrl,
+    'locationGoogleMapUrl',
+  );
+  const saveLocation = booleanValue(input.saveLocation, 'saveLocation');
+  if (saveLocation && (!locationName || locationId)) {
+    throw new Error('A new location name is required when saving a location');
+  }
   return {
     title: requiredString(input.title, 'title', 240),
     type: requiredEnumValue(input.type, 'type', eventTypes),
@@ -206,6 +244,11 @@ export function normalizeEventInput(input) {
     event_year: eventYear,
     relatedMemberIds: normalizedIds(input.relatedMemberIds, 'relatedMemberIds'),
     location: optionalString(input.location, 'location', 500) ?? '',
+    location_id: locationId,
+    location_name: locationName,
+    location_address: locationAddress,
+    location_google_map_url: locationGoogleMapUrl,
+    save_location: saveLocation,
     description: optionalString(input.description, 'description', 20000),
     solarDates: normalizeSolarDates(input.solarDates),
   };

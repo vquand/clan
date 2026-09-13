@@ -6,6 +6,7 @@ import {
   verifySessionToken,
 } from '../server/admin-auth.mjs';
 import {
+  normalizeLocationInput,
   normalizeEventInput,
   normalizeMemberInput,
   validateParentGraph,
@@ -321,8 +322,28 @@ void test('allows an event to have no related members and normalizes yearly date
       event_year: null,
       relatedMemberIds: [],
       location: 'Home',
+      location_id: null,
+      location_name: null,
+      location_address: null,
+      location_google_map_url: null,
+      save_location: false,
       description: null,
       solarDates: { 2026: '2026-09-27' },
+    },
+  );
+});
+
+void test('normalizes saved clan locations and shared Google Maps URLs', () => {
+  assert.deepEqual(
+    normalizeLocationInput({
+      name: '  Nhà thờ họ ',
+      address: '  12 Đường Gia Tộc  ',
+      googleMapUrl: 'https://maps.google.com/?q=family',
+    }),
+    {
+      name: 'Nhà thờ họ',
+      address: '12 Đường Gia Tộc',
+      google_map_url: 'https://maps.google.com/?q=family',
     },
   );
 });

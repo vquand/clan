@@ -17,6 +17,7 @@ import {
 } from './admin-auth.mjs';
 import {
   normalizeEventInput,
+  normalizeLocationInput,
   normalizeMemberInput,
   validateParentGraph,
 } from './admin-validation.mjs';
@@ -85,7 +86,15 @@ function isClanData(value) {
 export async function getClanData(database = sql) {
   if (!database) throw new Error('DATABASE_URL is not configured');
 
-  const [memberRows, parentRows, spouseRows, eventRows, eventMemberRows, eventSolarDateRows] =
+  const [
+    memberRows,
+    parentRows,
+    spouseRows,
+    eventRows,
+    eventMemberRows,
+    eventSolarDateRows,
+    locationRows,
+  ] =
     await Promise.all([
       database`
         SELECT
@@ -111,7 +120,8 @@ export async function getClanData(database = sql) {
       database`
         SELECT
           id, title, type, calendar, day, month, recurrence,
-          event_year, location, description
+          event_year, location, location_id, location_address,
+          location_google_map_url, description
         FROM events
         ORDER BY month, day, title, id
       `,
@@ -125,6 +135,11 @@ export async function getClanData(database = sql) {
         FROM event_solar_dates
         ORDER BY event_id, year
       `,
+      database`
+        SELECT id, name, address, google_map_url
+        FROM clan_locations
+        ORDER BY name, id
+      `,
     ]);
 
   const data = assembleClanData({
@@ -134,6 +149,7 @@ export async function getClanData(database = sql) {
     eventRows,
     eventMemberRows,
     eventSolarDateRows,
+    locationRows,
   });
   return isClanData(data) ? data : null;
 }
@@ -473,18 +489,71 @@ async function deleteMember(database, id) {
   }
 }
 
-function eventQueries(database, id, input) {
+async function resolveEventLocation(database, input) {
+  if (input.location_id) {
+    const locationId = uuid(input.location_id, 'Location ID');
+    const rows = await database`
+      SELECT id, name, address, google_map_url
+      FROM clan_locations
+      WHERE id = ${locationId}::uuid
+    `;
+    if (rows.length === 0) {
+      throw Object.assign(new Error('Location not found'), {
+        status: 422,
+        code: 'INVALID_LOCATION',
+      });
+    }
+    const row = rows[0];
+    return {
+      id: String(row.id),
+      name: row.name,
+      address: row.address ?? '',
+      googleMapUrl: row.google_map_url ?? null,
+      save: false,
+    };
+  }
+
+  const location = {
+    id: null,
+    name: input.location_name ?? input.location ?? '',
+    address: input.location_address ?? '',
+    googleMapUrl: input.location_google_map_url ?? null,
+    save: input.save_location,
+  };
+  if (location.save) {
+    const rows = await database`
+      INSERT INTO clan_locations (id, name, address, google_map_url)
+      VALUES (${randomUUID()}::uuid, ${location.name}, ${location.address}, ${location.googleMapUrl})
+      ON CONFLICT (name) DO UPDATE
+      SET address = EXCLUDED.address,
+          google_map_url = EXCLUDED.google_map_url,
+          updated_at = NOW()
+      RETURNING id
+    `;
+    location.id = String(rows[0].id);
+    location.save = false;
+  }
+  return location;
+}
+
+function insertEventQuery(database, id, input, location) {
+  return database`
+    INSERT INTO events (
+      id, title, type, calendar, day, month, recurrence, event_year,
+      location, location_id, location_address, location_google_map_url,
+      description
+    ) VALUES (
+      ${id}::uuid, ${input.title}, ${input.type}, ${input.calendar}, ${input.day},
+      ${input.month}, ${input.recurrence}, ${input.event_year},
+      ${location.name}, ${location.id}::uuid,
+      ${location.address}, ${location.googleMapUrl}, ${input.description}
+    )
+  `;
+}
+
+function eventQueries(database, id, input, location) {
   return [
-    database`
-      INSERT INTO events (
-        id, title, type, calendar, day, month, recurrence, event_year,
-        location, description
-      ) VALUES (
-        ${id}::uuid, ${input.title}, ${input.type}, ${input.calendar}, ${input.day},
-        ${input.month}, ${input.recurrence}, ${input.event_year},
-        ${input.location}, ${input.description}
-      )
-    `,
+    insertEventQuery(database, id, input, location),
     ...input.relatedMemberIds.map(
       (memberId) => database`
         INSERT INTO event_members (event_id, member_id)
@@ -500,11 +569,52 @@ function eventQueries(database, id, input) {
   ];
 }
 
+async function createLocation(database, body) {
+  const input = normalizeAdminInput(normalizeLocationInput, body);
+  const id = randomUUID();
+  await database.transaction([
+    database`
+      INSERT INTO clan_locations (id, name, address, google_map_url)
+      VALUES (${id}::uuid, ${input.name}, ${input.address}, ${input.google_map_url})
+    `,
+  ]);
+  return (await getClanData(database)).locations?.find((location) => location.id === id);
+}
+
+async function updateLocation(database, id, body) {
+  uuid(id, 'Location ID');
+  const input = normalizeAdminInput(normalizeLocationInput, body);
+  const result = await database`
+    UPDATE clan_locations
+    SET name = ${input.name}, address = ${input.address},
+        google_map_url = ${input.google_map_url}, updated_at = NOW()
+    WHERE id = ${id}::uuid
+    RETURNING id
+  `;
+  if (result.length === 0) {
+    throw Object.assign(new Error('Location not found'), { status: 404, code: 'NOT_FOUND' });
+  }
+  return (await getClanData(database)).locations?.find((location) => location.id === id);
+}
+
+async function deleteLocation(database, id) {
+  uuid(id, 'Location ID');
+  const result = await database`
+    DELETE FROM clan_locations
+    WHERE id = ${id}::uuid
+    RETURNING id
+  `;
+  if (result.length === 0) {
+    throw Object.assign(new Error('Location not found'), { status: 404, code: 'NOT_FOUND' });
+  }
+}
+
 async function createEvent(database, body) {
   const input = normalizeAdminInput(normalizeEventInput, body);
   const id = randomUUID();
   await assertMemberIds(database, input.relatedMemberIds);
-  await database.transaction(eventQueries(database, id, input));
+  const location = await resolveEventLocation(database, input);
+  await database.transaction(eventQueries(database, id, input, location));
   return (await getClanData(database)).events.find((event) => event.id === id);
 }
 
@@ -520,12 +630,16 @@ async function updateEvent(database, id, body) {
     ...body,
   });
   await assertMemberIds(database, input.relatedMemberIds);
+  const location = await resolveEventLocation(database, input);
   const queries = [
     database`
       UPDATE events
       SET title = ${input.title}, type = ${input.type}, calendar = ${input.calendar},
           day = ${input.day}, month = ${input.month}, recurrence = ${input.recurrence},
-          event_year = ${input.event_year}, location = ${input.location},
+          event_year = ${input.event_year}, location = ${location.name},
+          location_id = ${location.id ? location.id : null}::uuid,
+          location_address = ${location.address},
+          location_google_map_url = ${location.googleMapUrl},
           description = ${input.description}, updated_at = NOW()
       WHERE id = ${id}::uuid
     `,
@@ -639,6 +753,26 @@ async function handleAdminRequest(request, response, url, env, database) {
       request.headers.origin,
     );
     return true;
+  }
+
+  const locationMatch = url.pathname.match(/^\/api\/admin\/locations(?:\/([^/]+))?$/);
+  if (locationMatch) {
+    const id = locationMatch[1] ? decodeURIComponent(locationMatch[1]) : null;
+    if (request.method === 'POST' && !id) {
+      const location = await createLocation(database, await readJsonBody(request));
+      sendJson(response, 201, location, request.headers.origin);
+      return true;
+    }
+    if (request.method === 'PATCH' && id) {
+      const location = await updateLocation(database, id, await readJsonBody(request));
+      sendJson(response, 200, location, request.headers.origin);
+      return true;
+    }
+    if (request.method === 'DELETE' && id) {
+      await deleteLocation(database, id);
+      sendJson(response, 200, { deleted: true }, request.headers.origin);
+      return true;
+    }
   }
 
   const memberMatch = url.pathname.match(/^\/api\/admin\/members(?:\/([^/]+))?$/);

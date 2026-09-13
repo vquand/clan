@@ -37,8 +37,19 @@ export interface AdminEventInput {
   year?: number | string;
   relatedMemberIds: string[];
   location: string;
+  locationId?: string;
+  locationName?: string;
+  locationAddress?: string;
+  locationGoogleMapUrl?: string;
+  saveLocation?: boolean;
   description?: string;
   solarDates?: Record<number, string>;
+}
+
+export interface AdminLocationInput {
+  name: string;
+  address: string;
+  googleMapUrl?: string;
 }
 
 export type AdminData = ClanData;

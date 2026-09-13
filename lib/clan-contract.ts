@@ -2,12 +2,14 @@ import {
   MEMBER_AGE_GROUPS,
   MEMBER_AVATAR_STYLES,
   type ClanEvent,
+  type ClanLocation,
   type Member,
 } from '../data/types.ts';
 
 export interface ClanData {
   members: Member[];
   events: ClanEvent[];
+  locations?: ClanLocation[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -75,7 +77,11 @@ export function isClanEvent(value: unknown): value is ClanEvent {
     Number.isInteger(value.month) &&
     ['annual', 'once'].includes(String(value.recurrence)) &&
     isStringArray(value.relatedMemberIds) &&
-    typeof value.location === 'string'
+    typeof value.location === 'string' &&
+    (value.locationId === undefined || typeof value.locationId === 'string') &&
+    (value.locationAddress === undefined || typeof value.locationAddress === 'string') &&
+    (value.locationGoogleMapUrl === undefined ||
+      typeof value.locationGoogleMapUrl === 'string')
   );
 }
 
@@ -86,5 +92,16 @@ export function isClanData(value: unknown): value is ClanData {
     value.members.every(isMember) &&
     Array.isArray(value.events) &&
     value.events.every(isClanEvent)
+    &&
+    (value.locations === undefined ||
+      (Array.isArray(value.locations) &&
+        value.locations.every((location) =>
+          isRecord(location) &&
+          typeof location.id === 'string' &&
+          typeof location.name === 'string' &&
+          typeof location.address === 'string' &&
+          (location.googleMapUrl === undefined ||
+            typeof location.googleMapUrl === 'string'),
+        )))
   );
 }

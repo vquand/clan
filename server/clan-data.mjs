@@ -65,6 +65,7 @@ export function assembleClanData({
   eventRows,
   eventMemberRows,
   eventSolarDateRows,
+  locationRows = null,
 }) {
   const memberIds = memberRows.map((row) => String(row.id));
   const generations = assignGenerations(memberIds, parentRows, spouseRows);
@@ -133,9 +134,24 @@ export function assembleClanData({
     if (solarDates) solarDates[Number(row.year)] = asDate(row.solar_date);
   }
 
+  const locations = locationRows?.map((row) =>
+    compact({
+      id: String(row.id),
+      name: row.name,
+      address: row.address ?? '',
+      googleMapUrl: row.google_map_url ?? undefined,
+    }),
+  );
+  const locationsById = new Map(
+    (locations ?? []).map((location) => [location.id, location]),
+  );
+
   const events = eventRows.map((row) => {
     const id = String(row.id);
     const solarDates = solarDatesByEvent.get(id) ?? {};
+    const savedLocation = row.location_id
+      ? locationsById.get(String(row.location_id))
+      : undefined;
     return compact({
       id,
       title: row.title,
@@ -146,11 +162,15 @@ export function assembleClanData({
       recurrence: row.recurrence,
       year: asNumber(row.event_year),
       relatedMemberIds: relatedMembersByEvent.get(id) ?? [],
-      location: row.location,
+      location: row.location ?? savedLocation?.name ?? '',
+      locationId: row.location_id ? String(row.location_id) : undefined,
+      locationAddress: row.location_address ?? savedLocation?.address,
+      locationGoogleMapUrl:
+        row.location_google_map_url ?? savedLocation?.googleMapUrl,
       description: row.description ?? undefined,
       solarDates: Object.keys(solarDates).length > 0 ? solarDates : undefined,
     });
   });
 
-  return { members, events };
+  return compact({ members, events, locations });
 }

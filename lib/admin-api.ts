@@ -1,4 +1,9 @@
-import type { AdminEventInput, AdminMemberInput, AdminData } from './admin-contract';
+import type {
+  AdminEventInput,
+  AdminLocationInput,
+  AdminMemberInput,
+  AdminData,
+} from './admin-contract';
 
 interface ApiErrorBody {
   error?: { code?: string; message?: string };
@@ -99,6 +104,26 @@ export function updateEvent(id: string, input: Partial<AdminEventInput>) {
 
 export function deleteEvent(id: string) {
   return request<{ deleted: true }>(`/api/admin/events/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function createLocation(input: AdminLocationInput) {
+  return request<NonNullable<AdminData['locations']>[number]>('/api/admin/locations', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateLocation(id: string, input: AdminLocationInput) {
+  return request<NonNullable<AdminData['locations']>[number]>(`/api/admin/locations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteLocation(id: string) {
+  return request<{ deleted: true }>(`/api/admin/locations/${id}`, {
     method: 'DELETE',
   });
 }
