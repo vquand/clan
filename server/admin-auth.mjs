@@ -15,6 +15,15 @@ function sign(value, secret) {
   return createHmac('sha256', secret).update(value).digest('base64url');
 }
 
+function safeEqual(left, right) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return (
+    leftBuffer.length === rightBuffer.length &&
+    timingSafeEqual(leftBuffer, rightBuffer)
+  );
+}
+
 export function createSessionToken(
   username,
   secret,
@@ -86,5 +95,5 @@ export function getAdminConfig(env = process.env) {
 export function credentialsMatch(username, password, config) {
   if (!config || typeof username !== 'string' || typeof password !== 'string')
     return false;
-  return username === config.username && password === config.password;
+  return safeEqual(username, config.username) && safeEqual(password, config.password);
 }

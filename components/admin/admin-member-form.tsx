@@ -383,7 +383,7 @@ export function AdminMemberForm({
           <label htmlFor="member-avatar-image">Custom image URL</label>
           <Input
             id="member-avatar-image"
-            type="url"
+            type="text"
             placeholder="https://… or /portraits/name.jpg"
             value={form.avatarImageUrl}
             onChange={(event) => setField('avatarImageUrl', event.target.value)}
