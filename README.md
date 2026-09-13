@@ -75,7 +75,16 @@ npm run lint
 npm run build
 ```
 
-The database uses relational `members` and `events` tables with generated UUID primary keys. Parent, spouse, event-member, and yearly solar-date associations live in dedicated relationship tables. Generation numbers are derived from those relationships rather than stored, and branch labels are optional display metadata rather than identifiers. Re-running `db:seed` replaces the relational dataset in one transaction. The original JSON tables are retained under `*_legacy_json` names as a migration backup and are not read by the API.
+The database uses relational `members` and `events` tables with generated UUID primary keys. Parent, spouse, event-member, and yearly solar-date associations live in dedicated relationship tables. Generation numbers are derived from those relationships rather than stored, and branch labels are optional display metadata rather than identifiers. Re-running `db:seed` replaces the relational dataset in one transaction. The production database retains the original JSON tables under `*_legacy_json` names as a migration backup; they are not read by the API or created by the new baseline.
+
+The active database migration path is a single squashed baseline at
+[`db/migrations/001_baseline.sql`](db/migrations/001_baseline.sql). The original
+15 migration files are preserved in
+[`db/migrations-archive/`](db/migrations-archive/) as an immutable rollback and
+audit backup. On the first deployment after the squash, the migration runner
+recognizes the already-complete production schema and records the baseline
+without replaying the historical SQL. Future schema changes should use new
+numbered migration files under `db/migrations/`.
 
 ### Dataset shape
 
