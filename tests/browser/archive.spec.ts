@@ -2,10 +2,14 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { clanEvents } from '../../data/events';
 import { members } from '../../data/members';
+import type { AdminData } from '../../lib/admin-contract';
 
 async function serveSampleData(page: Page) {
   await page.route('**/api/clan', async (route) => {
     await route.fulfill({ json: { members, events: clanEvents } });
+  });
+  await page.route('**/api/admin/session', async (route) => {
+    await route.fulfill({ json: { authenticated: false } });
   });
 }
 
@@ -23,6 +27,9 @@ test('member search, profile, tree, and calendar work without browser errors', a
   await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
   await expect(page).toHaveTitle('Họ Đỗ Văn');
   await expect(page.getByRole('heading', { name: 'Họ Đỗ Văn' })).toBeVisible();
+  await expect(
+    page.getByText('Ghi chép của gia đình', { exact: true }),
+  ).toHaveCount(0);
   await expect(page.getByRole('tab').nth(0)).toHaveText('Lịch họ');
   await expect(page.getByRole('tab').nth(1)).toHaveText('Gia phả');
   await expect(page.getByRole('tab').nth(2)).toHaveText('Thành viên');
@@ -38,7 +45,14 @@ test('member search, profile, tree, and calendar work without browser errors', a
   await expect(
     page.getByRole('heading', { name: '10 thành viên · 3 thế hệ' }),
   ).toBeVisible();
+  await expect(page.getByText(/^Đời \d+$/)).toHaveCount(0);
   await expect(page.locator('.member-card')).toHaveCount(10);
+  await expect(
+    page.locator('.member-card').getByText('Còn sống', { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('.member-card').getByText('Đã qua đời', { exact: true }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: /Nguyễn Văn An/ }).first(),
   ).toHaveClass(/member-card--male/);
@@ -134,6 +148,16 @@ test('member search, profile, tree, and calendar work without browser errors', a
     fullPage: true,
   });
   expect(errors).toEqual([]);
+});
+
+test('opens the requested archive tab from the URL hash', async ({ page }) => {
+  await serveSampleData(page);
+  await page.goto('/#members');
+  await expect(page.getByRole('tab', { name: 'Thành viên' })).toHaveAttribute(
+    'data-active',
+    '',
+  );
+  await expect(page.getByRole('heading', { name: /thành viên/ })).toBeVisible();
 });
 
 test('shows current and previous clan head markers on member avatars', async ({
@@ -358,6 +382,324 @@ test('admin access stays minimal at the bottom of the archive', async ({
   });
 });
 
+test('admin sign-in keeps management controls in the main archive', async ({
+  page,
+}) => {
+  let authenticated = false;
+  await serveSampleData(page);
+  await page.route('**/api/admin/session', async (route) => {
+    await route.fulfill({ json: { authenticated } });
+  });
+  await page.route('**/api/admin/login', async (route) => {
+    authenticated = true;
+    await route.fulfill({ json: { authenticated: true } });
+  });
+  await page.route('**/api/admin/data', async (route) => {
+    await route.fulfill({
+      json: {
+        members,
+        events: clanEvents,
+        locations: [
+          {
+            id: 'location-1',
+            name: 'Nhà thờ họ',
+            address: '123 Đường Gia đình',
+          },
+        ],
+      },
+    });
+  });
+  await page.route('**/api/admin/logout', async (route) => {
+    authenticated = false;
+    await route.fulfill({ json: { authenticated: false } });
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Quản trị' }).click();
+  await page.getByLabel('Tên đăng nhập').fill('admin');
+  await page.getByLabel('Mật khẩu').fill('secret');
+  await page.getByRole('button', { name: 'Quản trị' }).click();
+
+  await expect(page.getByRole('tab', { name: 'Địa điểm' })).toBeVisible();
+  await expect(
+    page.getByText('Đang ở chế độ quản trị', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('tab', { name: 'Địa điểm' }).click();
+  await expect(page.getByRole('heading', { name: 'Địa điểm' })).toBeVisible();
+  await expect(page.locator('.location-card')).toContainText('Nhà thờ họ');
+
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await expect(page.getByRole('tab', { name: 'Địa điểm' })).toHaveCount(0);
+});
+
+test('admin can edit members and manage events and locations from the main tabs', async ({
+  page,
+}) => {
+  let data: AdminData = {
+    members: members.map((member) => ({
+      ...member,
+      siblingOrder:
+        member.id === 'chi' ? 1 : member.id === 'binh' ? 2 : member.id === 'dung' ? 3 : member.siblingOrder,
+    })),
+    events: [],
+    locations: [],
+  };
+
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({ json: data });
+  });
+  await page.route('**/api/admin/session', async (route) => {
+    await route.fulfill({ json: { authenticated: true } });
+  });
+  await page.route('**/api/admin/data', async (route) => {
+    await route.fulfill({ json: data });
+  });
+  await page.route('**/api/admin/members/*', async (route) => {
+    const body = route.request().postDataJSON() as Record<string, unknown>;
+    const id = route.request().url().split('/').at(-1);
+    data = {
+      ...data,
+      members: data.members.map((member) =>
+        member.id === id ? { ...member, ...body } : member,
+      ),
+    };
+    await route.fulfill({
+      json: data.members.find((member) => member.id === id),
+    });
+  });
+  await page.route('**/api/admin/events', async (route) => {
+    const body = route.request().postDataJSON() as Record<string, unknown>;
+    const event = {
+      ...body,
+      id: 'main-event-1',
+    } as AdminData['events'][number];
+    data = { ...data, events: [...data.events, event] };
+    await route.fulfill({ status: 201, json: event });
+  });
+  await page.route('**/api/admin/locations', async (route) => {
+    const body = route.request().postDataJSON() as Record<string, unknown>;
+    const location = {
+      ...body,
+      id: 'main-location-1',
+    } as NonNullable<AdminData['locations']>[number];
+    data = { ...data, locations: [...(data.locations ?? []), location] };
+    await route.fulfill({ status: 201, json: location });
+  });
+
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Thành viên' }).click();
+  await page.getByLabel('Xem anh chị em của').selectOption('chi');
+  await expect(page.locator('.member-card-admin')).toHaveCount(3);
+  await expect(page.locator('.member-card-admin').nth(0)).toContainText('Nguyễn Thị Chi');
+  await expect(page.locator('#member-order-chi')).toHaveValue('1');
+  await page.locator('#member-order-chi').fill('2');
+  await page.locator('#member-order-chi').press('Enter');
+  await expect(page.locator('#member-order-chi')).toHaveValue('2');
+
+  const chiCard = page
+    .locator('.member-card-admin')
+    .filter({ hasText: 'Nguyễn Thị Chi' });
+  await expect(
+    chiCard.getByRole('button', { name: 'Sửa thành viên' }),
+  ).toHaveCount(0);
+  await expect(
+    chiCard.getByRole('button', { name: 'Xóa thành viên' }),
+  ).toHaveCount(0);
+  await chiCard.locator('.member-card').click();
+  const chiDetail = page.getByRole('dialog').filter({
+    hasText: 'Nguyễn Thị Chi',
+  });
+  await expect(
+    chiDetail.getByRole('button', { name: 'Sửa thành viên' }),
+  ).toBeVisible();
+  await expect(
+    chiDetail.getByRole('button', { name: 'Xóa thành viên' }),
+  ).toBeVisible();
+  await chiDetail.getByRole('button', { name: 'Sửa thành viên' }).click();
+  await expect(page.locator('.member-sheet #member-full-name')).toBeVisible();
+  await expect(page.locator('.admin-dialog')).toHaveCount(0);
+  const memberControls = page.locator(
+    '.member-sheet .admin-form .admin-field > [data-slot="input"]:not([type="file"]), .member-sheet .admin-form .admin-field > .admin-select',
+  );
+  const controlMetrics = await memberControls.evaluateAll((elements) =>
+    elements.map((element) => {
+      const style = getComputedStyle(element);
+      return {
+        height: style.height,
+        width: style.width,
+        fieldWidth: element.parentElement?.getBoundingClientRect().width ?? 0,
+        backgroundColor: style.backgroundColor,
+      };
+    }),
+  );
+  expect(new Set(controlMetrics.map((metric) => metric.height))).toEqual(
+    new Set(['40px']),
+  );
+  expect(
+    controlMetrics.every(
+      (metric) => Math.abs(Number.parseFloat(metric.width) - metric.fieldWidth) < 1,
+    ),
+  ).toBe(true);
+  expect(
+    new Set(controlMetrics.map((metric) => metric.backgroundColor)).size,
+  ).toBe(1);
+  const disabledBackgrounds = await page.locator(
+    '.member-sheet .admin-form',
+  ).evaluate((form) => {
+    const input = document.createElement('input');
+    input.setAttribute('data-slot', 'input');
+    input.disabled = true;
+    const select = document.createElement('select');
+    select.className = 'admin-select';
+    select.disabled = true;
+    form.append(input, select);
+    const colors = [
+      getComputedStyle(input).backgroundColor,
+      getComputedStyle(select).backgroundColor,
+    ];
+    input.remove();
+    select.remove();
+    return colors;
+  });
+  expect(new Set(disabledBackgrounds).size).toBe(1);
+  expect(disabledBackgrounds[0]).not.toBe(controlMetrics[0].backgroundColor);
+  const parentsPicker = page.locator('.admin-field:has(#member-parents)');
+  await parentsPicker.locator('#member-parents').fill('Nguyễn Văn Dũng');
+  await expect(
+    page.getByRole('option', { name: 'Nguyễn Văn Dũng' }),
+  ).toBeVisible();
+  await page.getByRole('option', { name: 'Nguyễn Văn Dũng' }).click();
+  await expect(
+    parentsPicker.getByText('Nguyễn Văn Dũng', { exact: true }),
+  ).toBeVisible();
+  await page.locator('#member-spouses').fill('Phạm Gia Linh');
+  await expect(
+    page.getByRole('option', { name: 'Phạm Gia Linh' }),
+  ).toBeVisible();
+  await page.getByRole('option', { name: 'Phạm Gia Linh' }).click();
+  await expect(
+    page
+      .locator('.admin-field:has(#member-spouses)')
+      .getByText('Phạm Gia Linh', { exact: true }),
+  ).toBeVisible();
+  await page.locator('#member-full-name').fill('Nguyễn Thị Chi (đã sửa)');
+  await page.getByRole('button', { name: 'Save member' }).click();
+  await expect(page.locator('.member-sheet #member-full-name')).toBeHidden();
+  await expect(page.locator('.member-sheet')).toContainText(
+    'Nguyễn Thị Chi (đã sửa)',
+  );
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  await page.getByRole('tab', { name: 'Lịch họ' }).click();
+  await page.getByRole('button', { name: 'Thêm sự kiện' }).click();
+  await page.getByLabel('Title *').fill('Ngày họp mặt mới');
+  await page.getByLabel('Day *').fill('14');
+  await page.getByLabel('Month *').fill('9');
+  await page.getByRole('button', { name: 'Add event' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(page.locator('.event-list')).toContainText('Ngày họp mặt mới');
+
+  await page.getByRole('tab', { name: 'Địa điểm' }).click();
+  await page.getByRole('button', { name: 'Thêm địa điểm' }).click();
+  await page.getByLabel('Name *').fill('Sân nhà mới');
+  await page.getByLabel('Address').fill('456 Đường Gia đình');
+  await page.getByRole('button', { name: 'Add location' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(page.locator('.location-card')).toContainText('Sân nhà mới');
+});
+
+test('admin can drag sibling order in the main tree and save it', async ({
+  page,
+}) => {
+  const soloParent = {
+    id: 'solo-parent',
+    fullName: 'Solo Parent',
+    gender: 'female' as const,
+    clanRelation: 'lineage' as const,
+    generation: 1,
+    parentIds: [],
+    spouseIds: [],
+  };
+  const soloChildren = [
+    {
+      id: 'solo-child-a',
+      fullName: 'Solo Child A',
+      gender: 'male' as const,
+      clanRelation: 'lineage' as const,
+      generation: 2,
+      parentIds: ['solo-parent'],
+      spouseIds: [],
+      siblingOrder: 1,
+    },
+    {
+      id: 'solo-child-b',
+      fullName: 'Solo Child B',
+      gender: 'female' as const,
+      clanRelation: 'lineage' as const,
+      generation: 2,
+      parentIds: ['solo-parent'],
+      spouseIds: [],
+      siblingOrder: 2,
+    },
+  ];
+  let data: AdminData = {
+    members: [...members, soloParent, ...soloChildren],
+    events: clanEvents,
+    locations: [],
+  };
+  let lastOrder: string[] = [];
+
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({ json: data });
+  });
+  await page.route('**/api/admin/session', async (route) => {
+    await route.fulfill({ json: { authenticated: true } });
+  });
+  await page.route('**/api/admin/data', async (route) => {
+    await route.fulfill({ json: data });
+  });
+  await page.route('**/api/admin/siblings/reorder', async (route) => {
+    const body = route.request().postDataJSON() as { memberIds: string[] };
+    lastOrder = body.memberIds;
+    data = {
+      ...data,
+      members: data.members.map((member) => {
+        const index = body.memberIds.indexOf(member.id);
+        return index === -1 ? member : { ...member, siblingOrder: index + 1 };
+      }),
+    };
+    await route.fulfill({
+      json: data.members.filter((member) => body.memberIds.includes(member.id)),
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Gia phả' }).click();
+  await expect(
+    page
+      .locator('.admin-sibling-order-title')
+      .filter({ hasText: 'Children of Nguyễn Văn An and Trần Thị Mai' }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator('.admin-sibling-order-title')
+      .filter({ hasText: 'Children of Solo Parent' }),
+  ).toBeVisible();
+  const editor = page.locator('.admin-tree-sibling-groups .admin-sibling-order').first();
+  await expect(editor).toBeVisible();
+  const namesBefore = await editor.locator('.admin-sibling-order-name').allTextContents();
+  const handles = editor.getByRole('button', { name: /Reorder/ });
+  await handles.last().dragTo(editor.locator('li').first());
+  const namesAfter = await editor.locator('.admin-sibling-order-name').allTextContents();
+  expect(namesAfter).toEqual([namesBefore.at(-1), ...namesBefore.slice(0, -1)]);
+  await editor.getByRole('button', { name: 'Save order' }).click();
+  await expect.poll(() => lastOrder.length).toBe(namesBefore.length);
+  const memberIdByName = new Map(
+    members.map((member) => [member.fullName, member.id]),
+  );
+  expect(lastOrder[0]).toBe(memberIdByName.get(namesBefore.at(-1)!));
+});
+
 test('widens tree people pills to display complete Vietnamese names', async ({
   page,
 }) => {
@@ -468,7 +810,9 @@ test('pans the family tree viewport with mouse and touch drags', async ({
     scrollHeight: element.scrollHeight,
   }));
   expect(metricsBefore.scrollWidth).toBeGreaterThan(metricsBefore.clientWidth);
-  expect(metricsBefore.scrollHeight).toBeGreaterThan(metricsBefore.clientHeight);
+  expect(metricsBefore.scrollHeight).toBeGreaterThan(
+    metricsBefore.clientHeight,
+  );
 
   await viewport.scrollIntoViewIfNeeded();
   const box = await viewport.boundingBox();

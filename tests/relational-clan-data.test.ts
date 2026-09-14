@@ -133,6 +133,7 @@ void test('assembles the API dataset from relational rows and derives generation
         gender: 'male',
         clan_relation: 'lineage',
         birth_year: 1926,
+        sibling_order: 4,
         death_year: 1986,
         age_at_death: 60,
         age_at_death_qualifier: 'approximately',
@@ -262,6 +263,7 @@ void test('assembles the API dataset from relational rows and derives generation
   ]);
   assert.equal(data.members[0].ageGroup, 'senior');
   assert.equal(data.members[0].birthYear, 1926);
+  assert.equal(data.members[0].siblingOrder, 4);
   assert.equal(data.members[0].deathYear, 1986);
   assert.equal(data.members[0].ageAtDeath, 60);
   assert.equal(data.members[0].ageAtDeathQualifier, 'approximately');

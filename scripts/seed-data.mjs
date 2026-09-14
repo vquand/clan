@@ -46,6 +46,7 @@ export function normalizeSeedData(data, generateId) {
     clan_relation: member.clanRelation,
     birth_year: member.birthYear,
     birth_date: member.birthDate,
+    sibling_order: member.siblingOrder,
     life_status: member.status,
     death_year: member.deathYear,
     death_date: member.deathDate,

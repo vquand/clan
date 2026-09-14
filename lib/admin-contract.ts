@@ -7,6 +7,7 @@ export interface AdminMemberInput {
   clanRelation: 'lineage' | 'marriage';
   birthYear?: number | string;
   birthDate?: string;
+  siblingOrder?: number | string;
   status?: 'living' | 'deceased';
   deathYear?: number | string;
   deathDate?: string;

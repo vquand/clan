@@ -42,9 +42,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# local environment
-.env*
+# local environment (never commit secrets)
+.env
+.env.*
 !.env.example
+!.env.*.example
 
 # deployment and generated files
 .vercel
@@ -54,3 +56,6 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+
+# local agent metadata
+/.codex/

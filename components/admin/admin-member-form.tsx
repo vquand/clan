@@ -1,12 +1,27 @@
 'use client';
 
 import type { SubmitEvent } from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import { AdminSiblingOrder } from '@/components/admin/admin-sibling-order';
 import { Button } from '@/components/ui/button';
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+  ComboboxValue,
+  useComboboxAnchor,
+} from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { AdminMemberInput } from '@/lib/admin-contract';
+import { getSiblings } from '@/lib/clan';
 import type { Member } from '@/data/types';
 
 interface MemberFormProps {
@@ -14,7 +29,10 @@ interface MemberFormProps {
   members: Member[];
   pending: boolean;
   onCancel: () => void;
-  onSubmit: (input: AdminMemberInput) => Promise<void>;
+  onSubmit: (
+    input: AdminMemberInput,
+    siblingOrderIds?: string[],
+  ) => Promise<void>;
 }
 
 interface MemberFormState {
@@ -24,6 +42,7 @@ interface MemberFormState {
   clanRelation: AdminMemberInput['clanRelation'];
   birthYear: string;
   birthDate: string;
+  siblingOrder: string;
   status: '' | 'living' | 'deceased';
   deathYear: string;
   deathDate: string;
@@ -49,6 +68,7 @@ const blankForm: MemberFormState = {
   clanRelation: 'lineage',
   birthYear: '',
   birthDate: '',
+  siblingOrder: '',
   status: 'living',
   deathYear: '',
   deathDate: '',
@@ -76,6 +96,7 @@ function toForm(member: Member | null): MemberFormState {
     clanRelation: member.clanRelation,
     birthYear: member.birthYear?.toString() ?? '',
     birthDate: member.birthDate ?? '',
+    siblingOrder: member.siblingOrder?.toString() ?? '',
     status: member.status ?? '',
     deathYear: member.deathYear?.toString() ?? '',
     deathDate: member.deathDate ?? '',
@@ -111,6 +132,7 @@ function toPayload(form: MemberFormState): AdminMemberInput {
     clanRelation: form.clanRelation,
     birthYear: optionalValue(form.birthYear),
     birthDate: optionalValue(form.birthDate),
+    siblingOrder: optionalValue(form.siblingOrder),
     status: form.status || undefined,
     deathYear: optionalValue(form.deathYear),
     deathDate: optionalValue(form.deathDate),
@@ -146,30 +168,58 @@ function RelationPicker({
   currentMemberId?: string;
   onChange: (value: string[]) => void;
 }) {
+  const anchor = useComboboxAnchor();
+  const options = members
+    .filter((candidate) => candidate.id !== currentMemberId)
+    .map((candidate) => ({ id: candidate.id, name: candidate.fullName }));
+  const optionById = new Map(options.map((option) => [option.id, option]));
+  const selectedOptions = value
+    .map((id) => optionById.get(id))
+    .filter((option): option is (typeof options)[number] => Boolean(option));
+
   return (
     <div className="admin-field admin-field--wide">
       <label htmlFor={id}>{label}</label>
-      <select
-        id={id}
-        className="admin-multi-select"
+      <Combobox
+        items={options}
         multiple
-        size={Math.min(5, Math.max(3, members.length))}
-        value={value}
-        onChange={(event) =>
-          onChange(
-            Array.from(event.currentTarget.selectedOptions, (option) => option.value),
-          )
-        }
+        value={selectedOptions}
+        itemToStringLabel={(option) => option.name}
+        onValueChange={(nextValue) => onChange(nextValue.map((option) => option.id))}
       >
-        {members
-          .filter((candidate) => candidate.id !== currentMemberId)
-          .map((candidate) => (
-            <option key={candidate.id} value={candidate.id}>
-              {candidate.fullName}
-            </option>
-          ))}
-      </select>
-      <small>Select zero or more. Hold Ctrl/Cmd to choose multiple.</small>
+        <ComboboxChips ref={anchor} className="admin-relation-picker">
+          <ComboboxValue>
+            {(selected: typeof options) => (
+              <>
+                {selected.map((option) => (
+                  <ComboboxChip
+                    key={option.id}
+                    removeLabel={`Remove ${option.name}`}
+                  >
+                    {option.name}
+                  </ComboboxChip>
+                ))}
+                <ComboboxChipsInput
+                  id={id}
+                  placeholder="Search by name"
+                  aria-label={label}
+                />
+                <ComboboxTrigger aria-label={`Open ${label} list`} />
+              </>
+            )}
+          </ComboboxValue>
+        </ComboboxChips>
+        <ComboboxContent anchor={anchor} className="admin-relation-picker-content">
+          <ComboboxEmpty>No matching member found.</ComboboxEmpty>
+          <ComboboxList>
+            {(option: (typeof options)[number], index) => (
+              <ComboboxItem key={option.id} value={option} index={index}>
+                {option.name}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
     </div>
   );
 }
@@ -182,6 +232,25 @@ export function AdminMemberForm({
   onSubmit,
 }: MemberFormProps) {
   const [form, setForm] = useState<MemberFormState>(() => toForm(member));
+  const siblingCandidates = useMemo(() => {
+    if (!member || form.parentIds.length === 0) return [];
+    const parentIds = new Set(form.parentIds);
+    return getSiblings(member.id, [
+      ...members.filter((candidate) => candidate.id !== member.id),
+      { ...member, parentIds: form.parentIds },
+    ]).filter(
+      (candidate) =>
+        candidate.id === member.id ||
+        candidate.parentIds.some((parentId) => parentIds.has(parentId)),
+    );
+  }, [form.parentIds, member, members]);
+  const [siblingOrderOverride, setSiblingOrderOverride] = useState<
+    string[] | null
+  >(null);
+  const [siblingOrderDirty, setSiblingOrderDirty] = useState(false);
+
+  const siblingOrder =
+    siblingOrderOverride ?? siblingCandidates.map((candidate) => candidate.id);
   function setField<Key extends keyof MemberFormState>(
     key: Key,
     value: MemberFormState[Key],
@@ -205,12 +274,15 @@ export function AdminMemberForm({
     ) {
       return;
     }
-    await onSubmit({
-      ...payload,
-      ...(payload.isClanHead && currentHead
-        ? { confirmClanHeadChange: true }
-        : {}),
-    });
+    await onSubmit(
+      {
+        ...payload,
+        ...(payload.isClanHead && currentHead
+          ? { confirmClanHeadChange: true }
+          : {}),
+      },
+      siblingOrderDirty && siblingOrder.length > 1 ? siblingOrder : undefined,
+    );
   }
 
   return (
@@ -326,6 +398,24 @@ export function AdminMemberForm({
             onChange={(event) => setField('birthDate', event.target.value)}
           />
         </div>
+        {siblingCandidates.length > 1 && (
+          <div className="admin-field">
+            <label htmlFor="member-sibling-rank">Sibling order</label>
+            <Input
+              id="member-sibling-rank"
+              type="number"
+              min="1"
+              max={siblingCandidates.length}
+              value={form.siblingOrder}
+              onChange={(event) => setField('siblingOrder', event.target.value)}
+              aria-describedby="member-sibling-order-help"
+            />
+            <small id="member-sibling-order-help">
+              Optional manual rank, oldest to youngest. Saving shifts the other
+              siblings to keep ranks consecutive.
+            </small>
+          </div>
+        )}
         <div className="admin-field">
           <label htmlFor="member-death-year">Death year</label>
           <Input
@@ -447,7 +537,12 @@ export function AdminMemberForm({
           value={form.parentIds}
           members={members}
           currentMemberId={member?.id}
-          onChange={(value) => setField('parentIds', value)}
+          onChange={(value) => {
+            setField('parentIds', value);
+            setField('siblingOrder', '');
+            setSiblingOrderOverride(null);
+            setSiblingOrderDirty(false);
+          }}
         />
         <RelationPicker
           id="member-spouses"
@@ -457,9 +552,30 @@ export function AdminMemberForm({
           currentMemberId={member?.id}
           onChange={(value) => setField('spouseIds', value)}
         />
+        {siblingOrder.length > 1 && (
+          <AdminSiblingOrder
+            members={siblingCandidates}
+            memberIds={siblingOrder}
+            onChange={(value) => {
+              setSiblingOrderOverride(value);
+              setSiblingOrderDirty(true);
+              if (member) {
+                const nextRank = value.indexOf(member.id);
+                if (nextRank >= 0) {
+                  setField('siblingOrder', String(nextRank + 1));
+                }
+              }
+            }}
+          />
+        )}
       </div>
       <div className="admin-form-actions">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={pending}
+        >
           Cancel
         </Button>
         <Button type="submit" disabled={pending}>

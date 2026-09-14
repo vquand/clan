@@ -21,6 +21,8 @@ export interface Member {
   branch?: string;
   birthYear?: number;
   birthDate?: string;
+  /** Explicit oldest-to-youngest order for sibling groups with incomplete dates. */
+  siblingOrder?: number;
   status?: LifeStatus;
   deathYear?: number;
   deathDate?: string;

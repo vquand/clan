@@ -32,6 +32,8 @@ export function isMember(value: unknown): value is Member {
     Number.isInteger(value.generation) &&
     (value.branch === undefined || typeof value.branch === 'string') &&
     (value.birthYear === undefined || Number.isInteger(value.birthYear)) &&
+    (value.siblingOrder === undefined ||
+      (Number.isInteger(value.siblingOrder) && Number(value.siblingOrder) > 0)) &&
     (value.deathYear === undefined || Number.isInteger(value.deathYear)) &&
     (value.ageAtDeath === undefined ||
       (Number.isInteger(value.ageAtDeath) &&

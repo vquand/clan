@@ -1,0 +1,210 @@
+{
+  "members": [
+    {
+      "id": "an",
+      "fullName": "Nguyễn Văn An",
+      "familiarName": "Cụ An",
+      "gender": "male",
+      "clanRelation": "lineage",
+      "generation": 1,
+      "branch": "Chi trưởng",
+      "birthYear": 1932,
+      "birthDate": "1932-02-11",
+      "status": "deceased",
+      "deathDate": "2012-04-02",
+      "deathAnniversaryLunar": { "day": 12, "month": 3 },
+      "parentIds": [],
+      "spouseIds": ["mai"],
+      "hometown": "Nam Định",
+      "residence": "Hà Nội",
+      "biography": "Người gây dựng nếp nhà và gìn giữ gia phả của gia đình."
+    },
+    {
+      "id": "mai",
+      "fullName": "Trần Thị Mai",
+      "familiarName": "Cụ Mai",
+      "gender": "female",
+      "clanRelation": "marriage",
+      "generation": 1,
+      "branch": "Chi trưởng",
+      "birthYear": 1936,
+      "status": "living",
+      "parentIds": [],
+      "spouseIds": ["an"],
+      "hometown": "Hà Nam",
+      "residence": "Hà Nội"
+    },
+    {
+      "id": "chi",
+      "fullName": "Nguyễn Thị Chi",
+      "gender": "female",
+      "clanRelation": "lineage",
+      "generation": 2,
+      "branch": "Chi trưởng",
+      "birthYear": 1963,
+      "birthDate": "1963-08-16",
+      "status": "living",
+      "parentIds": ["an", "mai"],
+      "spouseIds": ["hoa"],
+      "residence": "Hải Phòng",
+      "biography": "Phụ trách kết nối các gia đình ở xa trong những dịp họp họ."
+    },
+    {
+      "id": "binh",
+      "fullName": "Nguyễn Văn Bình",
+      "gender": "male",
+      "clanRelation": "lineage",
+      "generation": 2,
+      "branch": "Chi trưởng",
+      "birthYear": 1960,
+      "birthDate": "1960-11-03",
+      "status": "living",
+      "parentIds": ["an", "mai"],
+      "spouseIds": ["lan"],
+      "residence": "Hà Nội",
+      "biography": "Hiện lưu giữ bản gia phả giấy của gia đình."
+    },
+    {
+      "id": "dung",
+      "fullName": "Nguyễn Văn Dũng",
+      "gender": "male",
+      "clanRelation": "lineage",
+      "generation": 2,
+      "branch": "Chi thứ",
+      "birthYear": 1967,
+      "status": "living",
+      "parentIds": ["an", "mai"],
+      "spouseIds": [],
+      "residence": "Đà Nẵng"
+    },
+    {
+      "id": "lan",
+      "fullName": "Lê Thu Lan",
+      "gender": "female",
+      "clanRelation": "marriage",
+      "generation": 2,
+      "branch": "Chi trưởng",
+      "birthYear": 1962,
+      "status": "living",
+      "parentIds": [],
+      "spouseIds": ["binh"],
+      "residence": "Hà Nội"
+    },
+    {
+      "id": "hoa",
+      "fullName": "Phạm Quốc Hòa",
+      "gender": "male",
+      "clanRelation": "marriage",
+      "generation": 2,
+      "branch": "Chi trưởng",
+      "birthYear": 1961,
+      "status": "living",
+      "parentIds": [],
+      "spouseIds": ["chi"],
+      "residence": "Hải Phòng"
+    },
+    {
+      "id": "giang",
+      "fullName": "Nguyễn Hoài Giang",
+      "gender": "female",
+      "clanRelation": "lineage",
+      "generation": 3,
+      "branch": "Chi trưởng",
+      "birthYear": 1988,
+      "birthDate": "1988-06-22",
+      "status": "living",
+      "parentIds": ["binh", "lan"],
+      "spouseIds": [],
+      "residence": "Hà Nội"
+    },
+    {
+      "id": "khanh",
+      "fullName": "Nguyễn Minh Khánh",
+      "gender": "male",
+      "clanRelation": "lineage",
+      "generation": 3,
+      "branch": "Chi trưởng",
+      "birthYear": 1992,
+      "birthDate": "1992-01-14",
+      "status": "living",
+      "parentIds": ["binh", "lan"],
+      "spouseIds": [],
+      "residence": "TP. Hồ Chí Minh"
+    },
+    {
+      "id": "linh",
+      "fullName": "Phạm Gia Linh",
+      "gender": "female",
+      "clanRelation": "lineage",
+      "generation": 3,
+      "branch": "Chi trưởng",
+      "birthYear": 1990,
+      "status": "living",
+      "parentIds": ["chi", "hoa"],
+      "spouseIds": [],
+      "residence": "Hải Phòng"
+    }
+  ],
+  "events": [
+    {
+      "id": "gio-cu-an",
+      "title": "Giỗ cụ Nguyễn Văn An",
+      "type": "death-anniversary",
+      "calendar": "lunar",
+      "day": 12,
+      "month": 3,
+      "recurrence": "annual",
+      "relatedMemberIds": ["an"],
+      "location": "Nhà thờ họ",
+      "locationId": "nha-tho-ho",
+      "description": "Con cháu có mặt trước 9 giờ để chuẩn bị lễ.",
+      "solarDates": {
+        "2026": "2026-04-28",
+        "2027": "2027-04-18"
+      }
+    },
+    {
+      "id": "hop-ho-thang-tu",
+      "title": "Họp họ đầu hè",
+      "type": "clan-ceremony",
+      "calendar": "solar",
+      "day": 18,
+      "month": 4,
+      "recurrence": "annual",
+      "relatedMemberIds": [],
+      "location": "Nhà thờ họ",
+      "locationId": "nha-tho-ho",
+      "description": "Tổng kết quỹ họ và kế hoạch hoạt động trong năm."
+    },
+    {
+      "id": "trung-thu",
+      "title": "Trung thu sum họp",
+      "type": "gathering",
+      "calendar": "lunar",
+      "day": 15,
+      "month": 8,
+      "recurrence": "annual",
+      "relatedMemberIds": [],
+      "location": "Sân nhà thờ họ",
+      "locationId": "san-nha-tho-ho",
+      "description": "Buổi gặp mặt dành cho các cháu nhỏ trong gia đình.",
+      "solarDates": {
+        "2026": "2026-09-25",
+        "2027": "2027-09-15"
+      }
+    }
+  ],
+  "locations": [
+    {
+      "id": "nha-tho-ho",
+      "name": "Nhà thờ họ",
+      "address": "Nam Định",
+      "googleMapUrl": "https://maps.google.com/?q=Nam+Dinh"
+    },
+    {
+      "id": "san-nha-tho-ho",
+      "name": "Sân nhà thờ họ",
+      "address": "Nam Định"
+    }
+  ]
+}

@@ -111,6 +111,7 @@ export function ClanDataLoader({
       clanDisplayName={clanDisplayName}
       members={state.data.members}
       events={state.data.events}
+      locations={state.data.locations}
       isSampleData={state.isSample}
     />
   );

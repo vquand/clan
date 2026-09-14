@@ -12,8 +12,6 @@ import {
   getLunarDate,
   getMoonPhase,
   getSolarDateFromLunar,
-  getGenerationFilters,
-  getGenerations,
   getRelatives,
   validateClanData,
 } from '../lib/clan.ts';
@@ -22,9 +20,69 @@ void test('sample clan data has valid member and event references', () => {
   assert.deepEqual(validateClanData(members, clanEvents), []);
 });
 
-void test('children are derived from parent references and sorted by birth year', () => {
+void test('children are derived from parent references and sorted by birth date', () => {
   assert.deepEqual(
     getChildren('an', members).map((member) => member.id),
+    ['binh', 'chi', 'dung'],
+  );
+});
+
+void test('uses the exact birth date when siblings share a birth year', () => {
+  const parent = members[0];
+  const siblings = [
+    {
+      ...members[2],
+      id: 'later-born',
+      fullName: 'Later born',
+      birthYear: 1970,
+      birthDate: '1970-12-01',
+      parentIds: [parent.id],
+      spouseIds: [],
+    },
+    {
+      ...members[2],
+      id: 'earlier-born',
+      fullName: 'Earlier born',
+      birthYear: 1970,
+      birthDate: '1970-01-01',
+      parentIds: [parent.id],
+      spouseIds: [],
+    },
+  ];
+
+  assert.deepEqual(
+    getChildren(parent.id, [parent, ...siblings]).map((member) => member.id),
+    ['earlier-born', 'later-born'],
+  );
+});
+
+void test('complete sibling orders override birth dates for the tree', () => {
+  const reorderedMembers = members.map((member) => {
+    if (member.id === 'binh') {
+      return { ...member, birthYear: undefined, birthDate: undefined, siblingOrder: 3 };
+    }
+    if (member.id === 'chi') {
+      return { ...member, birthYear: undefined, birthDate: undefined, siblingOrder: 1 };
+    }
+    if (member.id === 'dung') {
+      return { ...member, birthYear: undefined, birthDate: undefined, siblingOrder: 2 };
+    }
+    return member;
+  });
+
+  assert.deepEqual(
+    getChildren('an', reorderedMembers).map((member) => member.id),
+    ['chi', 'dung', 'binh'],
+  );
+});
+
+void test('partial sibling orders do not override the automatic date fallback', () => {
+  const partiallyOrderedMembers = members.map((member) =>
+    member.id === 'dung' ? { ...member, siblingOrder: 1 } : member,
+  );
+
+  assert.deepEqual(
+    getChildren('an', partiallyOrderedMembers).map((member) => member.id),
     ['binh', 'chi', 'dung'],
   );
 });
@@ -40,27 +98,6 @@ void test('couples place male members on the left and female members on the righ
   assert.deepEqual(
     orderCoupleMembers(male, female).map((member) => member.id),
     ['hoa', 'chi'],
-  );
-});
-
-void test('generation filters are derived from the supplied clan data', () => {
-  assert.deepEqual(getGenerations(members), [1, 2, 3]);
-  assert.deepEqual(
-    getGenerations([
-      { ...members[0], generation: 4 },
-      { ...members[1], generation: 1 },
-    ]),
-    [1, 4],
-  );
-});
-
-void test('generation filters include level zero and future generations', () => {
-  assert.deepEqual(
-    getGenerationFilters([
-      { ...members[0], generation: 0 },
-      { ...members[1], generation: 5 },
-    ]),
-    ['all', 0, 5],
   );
 });
 

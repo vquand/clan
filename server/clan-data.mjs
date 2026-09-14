@@ -95,6 +95,7 @@ export function assembleClanData({
       generation: generations.get(id) ?? 0,
       birthYear: asNumber(row.birth_year),
       birthDate: asDate(row.birth_date),
+      siblingOrder: asNumber(row.sibling_order),
       status: row.life_status ?? undefined,
       deathYear: asNumber(row.death_year),
       deathDate: asDate(row.death_date),

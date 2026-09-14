@@ -34,29 +34,62 @@ export function orderCoupleMembers(
     : [spouse, member];
 }
 
-export function getChildren(id: string, allMembers: Member[]) {
-  return allMembers
-    .filter((member) => member.parentIds.includes(id))
-    .sort((a, b) => {
-      if (a.birthYear === undefined && b.birthYear === undefined) {
-        return a.fullName.localeCompare(b.fullName);
-      }
-      if (a.birthYear === undefined) return 1;
-      if (b.birthYear === undefined) return -1;
-      return a.birthYear - b.birthYear;
-    });
+function compareBirthInformation(a: Member, b: Member) {
+  const aBirth =
+    a.birthDate ??
+    (a.birthYear === undefined
+      ? undefined
+      : `${a.birthYear.toString().padStart(4, '0')}-01-01`);
+  const bBirth =
+    b.birthDate ??
+    (b.birthYear === undefined
+      ? undefined
+      : `${b.birthYear.toString().padStart(4, '0')}-01-01`);
+  if (aBirth === undefined && bBirth === undefined) return 0;
+  if (aBirth === undefined) return 1;
+  if (bBirth === undefined) return -1;
+  return aBirth.localeCompare(bBirth);
 }
 
-export function getGenerations(allMembers: Member[]) {
-  return [...new Set(allMembers.map((member) => member.generation))].sort(
-    (a, b) => a - b,
+export function orderMembersBySiblingOrder(siblings: Member[]) {
+  const hasCompleteSiblingOrder =
+    siblings.length > 1 &&
+    siblings.every((member) => member.siblingOrder !== undefined);
+
+  return [...siblings].sort((a, b) => {
+    if (hasCompleteSiblingOrder && a.siblingOrder !== b.siblingOrder) {
+      return a.siblingOrder! - b.siblingOrder!;
+    }
+
+    const birthComparison = compareBirthInformation(a, b);
+    if (birthComparison !== 0) return birthComparison;
+
+    if (a.siblingOrder !== undefined && b.siblingOrder !== undefined) {
+      const siblingComparison = a.siblingOrder - b.siblingOrder;
+      if (siblingComparison !== 0) return siblingComparison;
+    }
+    return a.fullName.localeCompare(b.fullName) || a.id.localeCompare(b.id);
+  });
+}
+
+export function getChildren(id: string, allMembers: Member[]) {
+  return orderMembersBySiblingOrder(
+    allMembers.filter((member) => member.parentIds.includes(id)),
   );
 }
 
-export function getGenerationFilters(
-  allMembers: Member[],
-): Array<number | 'all'> {
-  return ['all', ...getGenerations(allMembers)];
+export function getSiblings(id: string, allMembers: Member[]) {
+  const member = getMember(id, allMembers);
+  if (!member || member.parentIds.length === 0) return [];
+
+  const parentIds = new Set(member.parentIds);
+  return orderMembersBySiblingOrder(
+    allMembers.filter(
+      (candidate) =>
+        candidate.id === id ||
+        candidate.parentIds.some((parentId) => parentIds.has(parentId)),
+    ),
+  );
 }
 
 export function getRelatives(member: Member, allMembers: Member[]) {

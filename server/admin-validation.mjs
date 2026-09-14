@@ -168,6 +168,7 @@ export function normalizeMemberInput(input, { memberId } = {}) {
     clan_relation: requiredEnumValue(input.clanRelation, 'clanRelation', clanRelations),
     birth_year: optionalInteger(input.birthYear, 'birthYear'),
     birth_date: optionalDate(input.birthDate, 'birthDate'),
+    sibling_order: optionalInteger(input.siblingOrder, 'siblingOrder'),
     life_status: enumValue(input.status, 'status', lifeStatuses),
     death_year: optionalInteger(input.deathYear, 'deathYear'),
     death_date: optionalDate(input.deathDate, 'deathDate'),
@@ -186,6 +187,97 @@ export function normalizeMemberInput(input, { memberId } = {}) {
     parentIds,
     spouseIds,
   };
+}
+
+export function normalizeSiblingOrderInput(input) {
+  if (!isRecord(input)) throw new Error('Sibling order input must be an object');
+  if (!Array.isArray(input.memberIds) || input.memberIds.length < 2) {
+    throw new Error('memberIds must contain at least two members');
+  }
+  const memberIds = input.memberIds.map((memberId) => {
+    if (typeof memberId !== 'string' || memberId.trim() === '') {
+      throw new Error('memberIds must contain member IDs');
+    }
+    return memberId.trim();
+  });
+  if (new Set(memberIds).size !== memberIds.length) {
+    throw new Error('memberIds must not contain duplicates');
+  }
+  return { memberIds };
+}
+
+export function reindexSiblingOrders(siblings, memberId, requestedOrder) {
+  if (!Array.isArray(siblings) || siblings.length === 0) {
+    throw new Error('Sibling group must contain at least one member');
+  }
+  if (typeof memberId !== 'string' || memberId.trim() === '') {
+    throw new Error('Member ID is required for sibling reordering');
+  }
+  if (
+    !Number.isInteger(requestedOrder) ||
+    requestedOrder < 1 ||
+    requestedOrder > siblings.length
+  ) {
+    throw new Error(`Sibling order must be from 1 to ${siblings.length}`);
+  }
+
+  const ids = siblings.map((member) => member.id);
+  if (
+    ids.some((id) => typeof id !== 'string' || id.trim() === '') ||
+    new Set(ids).size !== ids.length
+  ) {
+    throw new Error('Sibling group must contain unique member IDs');
+  }
+
+  const currentIndex = siblings.findIndex((member) => member.id === memberId);
+  if (currentIndex === -1) throw new Error('Member is not in the sibling group');
+
+  const hasCompleteSiblingOrder = siblings.every(
+    (member) => member.siblingOrder !== undefined && member.siblingOrder !== null,
+  );
+  const ordered = [...siblings].sort((a, b) => {
+    if (hasCompleteSiblingOrder && a.siblingOrder !== b.siblingOrder) {
+      return a.siblingOrder - b.siblingOrder;
+    }
+    const aBirth =
+      a.birthDate ??
+      (a.birthYear === undefined
+        ? undefined
+        : `${a.birthYear.toString().padStart(4, '0')}-01-01`);
+    const bBirth =
+      b.birthDate ??
+      (b.birthYear === undefined
+        ? undefined
+        : `${b.birthYear.toString().padStart(4, '0')}-01-01`);
+    if (aBirth === undefined && bBirth !== undefined) return 1;
+    if (aBirth !== undefined && bBirth === undefined) return -1;
+    if (aBirth !== undefined && bBirth !== undefined && aBirth !== bBirth) {
+      return aBirth.localeCompare(bBirth);
+    }
+    if (
+      !hasCompleteSiblingOrder &&
+      a.siblingOrder !== undefined &&
+      a.siblingOrder !== null &&
+      b.siblingOrder !== undefined &&
+      b.siblingOrder !== null
+    ) {
+      const siblingComparison = a.siblingOrder - b.siblingOrder;
+      if (siblingComparison !== 0) return siblingComparison;
+    }
+    return (
+      (a.fullName ?? '').localeCompare(b.fullName ?? '') ||
+      a.id.localeCompare(b.id)
+    );
+  });
+  const movedMember = ordered.find((member) => member.id === memberId);
+  if (!movedMember) throw new Error('Member is not in the sibling group');
+  ordered.splice(ordered.indexOf(movedMember), 1);
+  ordered.splice(requestedOrder - 1, 0, movedMember);
+
+  return ordered.map((member, index) => ({
+    id: member.id,
+    siblingOrder: index + 1,
+  }));
 }
 
 function normalizeSolarDates(value) {

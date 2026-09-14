@@ -1,5 +1,6 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:http';
 
@@ -19,6 +20,8 @@ import {
   normalizeEventInput,
   normalizeLocationInput,
   normalizeMemberInput,
+  normalizeSiblingOrderInput,
+  reindexSiblingOrders,
   validateParentGraph,
 } from './admin-validation.mjs';
 import { assembleClanData } from './clan-data.mjs';
@@ -36,6 +39,8 @@ for (const envFile of ['.env', 'server/.env']) {
 const port = Number(process.env.PORT ?? 10000);
 const databaseUrl = process.env.DATABASE_URL?.trim();
 const sql = databaseUrl ? neon(databaseUrl) : null;
+const demoDatabasePath = resolve(process.cwd(), 'data/db.json');
+let demoClanData;
 const allowedOrigins = (process.env.CORS_ORIGINS ?? '*')
   .split(',')
   .map((origin) => origin.trim())
@@ -83,8 +88,28 @@ function isClanData(value) {
   );
 }
 
+function loadDemoClanData() {
+  if (demoClanData) return structuredClone(demoClanData);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(demoDatabasePath, 'utf8'));
+  } catch (error) {
+    throw new Error(
+      `Unable to load the demo database at ${demoDatabasePath}: ${error.message}`,
+    );
+  }
+  if (!isClanData(parsed)) {
+    throw new Error(
+      `The demo database at ${demoDatabasePath} must contain members and events arrays`,
+    );
+  }
+  demoClanData = parsed;
+  return structuredClone(demoClanData);
+}
+
 export async function getClanData(database = sql) {
-  if (!database) throw new Error('DATABASE_URL is not configured');
+  if (!database) return loadDemoClanData();
 
   const [
     memberRows,
@@ -99,6 +124,7 @@ export async function getClanData(database = sql) {
       database`
         SELECT
           id, full_name, familiar_name, gender, clan_relation, birth_year, birth_date,
+          sibling_order,
           life_status, death_year, death_date, age_at_death, age_at_death_qualifier,
           age_group, avatar_style, avatar_image_url,
           is_clan_head, is_previous_clan_head,
@@ -246,6 +272,15 @@ function memberAsInput(member) {
   };
 }
 
+function siblingGroup(members, memberId, parentIds) {
+  const parentIdSet = new Set(parentIds);
+  return members.filter(
+    (member) =>
+      member.id === memberId ||
+      member.parentIds.some((parentId) => parentIdSet.has(parentId)),
+  );
+}
+
 function eventAsInput(event) {
   return { ...event, year: event.year };
 }
@@ -312,6 +347,7 @@ function memberQueries(database, id, input) {
     database`
       INSERT INTO members (
         id, full_name, familiar_name, gender, clan_relation, birth_year, birth_date,
+        sibling_order,
         life_status, death_year, death_date, age_at_death, age_at_death_qualifier,
         age_group, avatar_style, avatar_image_url,
         is_clan_head, is_previous_clan_head,
@@ -320,6 +356,7 @@ function memberQueries(database, id, input) {
       ) VALUES (
         ${id}::uuid, ${input.full_name}, ${input.familiar_name}, ${input.gender},
         ${input.clan_relation}, ${input.birth_year}, ${input.birth_date},
+        ${input.sibling_order},
         ${input.life_status}, ${input.death_year}, ${input.death_date},
         ${input.age_at_death}, ${input.age_at_death_qualifier}, ${input.age_group},
         ${input.avatar_style}, ${input.avatar_image_url},
@@ -425,6 +462,44 @@ async function updateMember(database, id, body) {
   await assertMemberRelationships(database, data, id, nextInput.parentIds);
   await assertMemberIds(database, nextInput.spouseIds);
 
+  let siblingOrderUpdates = [];
+  if (
+    Object.prototype.hasOwnProperty.call(body, 'siblingOrder') &&
+    nextInput.sibling_order !== null &&
+    nextInput.parentIds.length > 0
+  ) {
+    const membersWithNextParents = data.members.map((member) =>
+      member.id === id ? { ...member, parentIds: nextInput.parentIds } : member,
+    );
+    const siblings = siblingGroup(
+      membersWithNextParents,
+      id,
+      nextInput.parentIds,
+    );
+    if (siblings.length > 1) {
+      let reindexedSiblings;
+      try {
+        reindexedSiblings = reindexSiblingOrders(
+          siblings,
+          id,
+          nextInput.sibling_order,
+        );
+      } catch (error) {
+        throw Object.assign(new Error(error.message), {
+          status: 422,
+          code: 'VALIDATION_ERROR',
+        });
+      }
+      siblingOrderUpdates = reindexedSiblings.map(
+        ({ id: siblingId, siblingOrder }) => database`
+          UPDATE members
+          SET sibling_order = ${siblingOrder}, updated_at = NOW()
+          WHERE id = ${siblingId}::uuid
+        `,
+      );
+    }
+  }
+
   const queries = [
     ...(headChange.previousHeadId && headChange.previousHeadId !== id
       ? [
@@ -440,6 +515,7 @@ async function updateMember(database, id, body) {
       SET full_name = ${input.full_name}, familiar_name = ${input.familiar_name},
           gender = ${input.gender}, clan_relation = ${input.clan_relation},
           birth_year = ${input.birth_year}, birth_date = ${input.birth_date},
+          sibling_order = ${input.sibling_order},
           life_status = ${input.life_status}, death_year = ${input.death_year},
           death_date = ${input.death_date}, age_at_death = ${input.age_at_death},
           age_at_death_qualifier = ${input.age_at_death_qualifier},
@@ -455,6 +531,7 @@ async function updateMember(database, id, body) {
     `,
     database`DELETE FROM member_parents WHERE child_id = ${id}::uuid`,
     database`DELETE FROM member_spouses WHERE member_a_id = ${id}::uuid OR member_b_id = ${id}::uuid`,
+    ...siblingOrderUpdates,
     ...nextInput.parentIds.map(
       (parentId, index) => database`
         INSERT INTO member_parents (child_id, parent_id, parent_order)
@@ -479,6 +556,59 @@ async function updateMember(database, id, body) {
   ];
   await database.transaction(queries);
   return (await getClanData(database)).members.find((member) => member.id === id);
+}
+
+async function reorderSiblings(database, body) {
+  const input = normalizeAdminInput(normalizeSiblingOrderInput, body);
+  const memberIds = input.memberIds.map((memberId) =>
+    uuid(memberId, 'Member ID'),
+  );
+  const data = await getClanData(database);
+  const membersById = new Map(data.members.map((member) => [member.id, member]));
+  const anchor = membersById.get(memberIds[0]);
+
+  if (!anchor || anchor.parentIds.length === 0) {
+    throw Object.assign(
+      new Error('Sibling order requires members with a shared parent'),
+      {
+        status: 422,
+        code: 'INVALID_RELATIONSHIP',
+      },
+    );
+  }
+
+  const expectedSiblingIds = siblingGroup(
+    data.members,
+    anchor.id,
+    anchor.parentIds,
+  ).map((member) => member.id);
+  const requestedIds = new Set(memberIds);
+  if (
+    expectedSiblingIds.length !== memberIds.length ||
+    expectedSiblingIds.some((memberId) => !requestedIds.has(memberId))
+  ) {
+    throw Object.assign(
+      new Error('The sibling order must include every sibling in the group'),
+      {
+        status: 422,
+        code: 'INVALID_RELATIONSHIP',
+      },
+    );
+  }
+
+  await database.transaction(
+    memberIds.map(
+      (memberId, index) => database`
+        UPDATE members
+        SET sibling_order = ${index + 1}, updated_at = NOW()
+        WHERE id = ${memberId}::uuid
+      `,
+    ),
+  );
+
+  return (await getClanData(database)).members.filter((member) =>
+    requestedIds.has(member.id),
+  );
 }
 
 async function deleteMember(database, id) {
@@ -742,7 +872,6 @@ async function handleAdminRequest(request, response, url, env, database) {
 
   if (!url.pathname.startsWith('/api/admin/')) return false;
   requestAdmin(request, env);
-  if (!database) throw new Error('DATABASE_URL is not configured');
 
   if (url.pathname === '/api/admin/data' && request.method === 'GET') {
     const data = await getClanData(database);
@@ -752,6 +881,22 @@ async function handleAdminRequest(request, response, url, env, database) {
       data ?? errorPayload('NOT_FOUND', 'Clan data has not been seeded'),
       request.headers.origin,
     );
+    return true;
+  }
+
+  if (!database) {
+    throw Object.assign(
+      new Error('The demo database is read-only; configure DATABASE_URL to enable admin writes'),
+      { status: 503, code: 'DEMO_DATABASE_READ_ONLY' },
+    );
+  }
+
+  if (
+    url.pathname === '/api/admin/siblings/reorder' &&
+    request.method === 'POST'
+  ) {
+    const members = await reorderSiblings(database, await readJsonBody(request));
+    sendJson(response, 200, members, request.headers.origin);
     return true;
   }
 

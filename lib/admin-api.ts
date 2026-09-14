@@ -82,6 +82,13 @@ export function updateMember(id: string, input: Partial<AdminMemberInput>) {
   });
 }
 
+export function reorderSiblings(memberIds: string[]) {
+  return request<AdminData['members']>('/api/admin/siblings/reorder', {
+    method: 'POST',
+    body: JSON.stringify({ memberIds }),
+  });
+}
+
 export function deleteMember(id: string) {
   return request<{ deleted: true }>(`/api/admin/members/${id}`, {
     method: 'DELETE',

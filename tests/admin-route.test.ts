@@ -61,3 +61,27 @@ void test('protects the admin data endpoint and manages an authenticated session
     assert.equal(logout.status, 200);
   });
 });
+
+void test('serves the fictional demo database when no database URL is configured', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/clan`);
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    assert.equal(data.members[0].fullName, 'Nguyễn Văn An');
+    assert.equal(data.members.length, 10);
+    assert.equal(data.events.length, 3);
+    assert.equal(data.locations.length, 2);
+
+    const login = await fetch(`${baseUrl}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'secret-password' }),
+    });
+    const cookie = login.headers.get('set-cookie')?.split(';', 1)[0] ?? '';
+    const adminData = await fetch(`${baseUrl}/api/admin/data`, {
+      headers: { cookie },
+    });
+    assert.equal(adminData.status, 200);
+    assert.equal((await adminData.json()).members.length, 10);
+  });
+});

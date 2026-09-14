@@ -21,7 +21,10 @@ void test('keeps one active baseline and archives the superseded migration chain
     .filter((fileName) => fileName.endsWith('.sql'))
     .sort();
 
-  assert.deepEqual(activeMigrations, ['001_baseline.sql']);
+  assert.deepEqual(activeMigrations, [
+    '001_baseline.sql',
+    '002_add_sibling_order.sql',
+  ]);
   assert.equal(archivedMigrations.length, 15);
 
   const baseline = await readFile(
@@ -39,6 +42,13 @@ void test('keeps one active baseline and archives the superseded migration chain
   ]) {
     assert.match(baseline, new RegExp(marker));
   }
+  const siblingOrderMigration = await readFile(
+    fileURLToPath(
+      new URL('../db/migrations/002_add_sibling_order.sql', import.meta.url),
+    ),
+    'utf8',
+  );
+  assert.match(siblingOrderMigration, /ADD COLUMN sibling_order SMALLINT/i);
   assert.ok(splitSqlStatements(baseline).length > 20);
 });
 

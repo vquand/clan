@@ -9,6 +9,8 @@ import {
   normalizeLocationInput,
   normalizeEventInput,
   normalizeMemberInput,
+  reindexSiblingOrders,
+  normalizeSiblingOrderInput,
   validateParentGraph,
 } from '../server/admin-validation.mjs';
 import {
@@ -46,6 +48,7 @@ void test('normalizes a member with editable relationship and avatar fields', ()
       clan_relation: 'lineage',
       birth_year: 1980,
       birth_date: null,
+      sibling_order: null,
       life_status: null,
       death_year: null,
       death_date: null,
@@ -64,6 +67,72 @@ void test('normalizes a member with editable relationship and avatar fields', ()
       parentIds: ['parent-1'],
       spouseIds: ['spouse-1'],
     },
+  );
+});
+
+void test('normalizes a positive sibling order for records with incomplete birth data', () => {
+  assert.equal(
+    normalizeMemberInput({
+      fullName: 'War-era record',
+      gender: 'female',
+      clanRelation: 'lineage',
+      siblingOrder: '2',
+    }).sibling_order,
+    2,
+  );
+  assert.throws(
+    () =>
+      normalizeMemberInput({
+        fullName: 'Invalid order',
+        gender: 'female',
+        clanRelation: 'lineage',
+        siblingOrder: 0,
+      }),
+    /siblingOrder must be an integer/i,
+  );
+});
+
+void test('normalizes a complete sibling reorder request', () => {
+  assert.deepEqual(
+    normalizeSiblingOrderInput({ memberIds: [' first ', 'second'] }),
+    { memberIds: ['first', 'second'] },
+  );
+  assert.throws(
+    () => normalizeSiblingOrderInput({ memberIds: ['first', 'first'] }),
+    /must not contain duplicates/i,
+  );
+});
+
+void test('shifts later siblings when a member moves to an earlier rank', () => {
+  assert.deepEqual(
+    reindexSiblingOrders(
+      [
+        { id: 'a', siblingOrder: 1 },
+        { id: 'b', siblingOrder: 2 },
+        { id: 'c', siblingOrder: 3 },
+        { id: 'd', siblingOrder: 4 },
+      ],
+      'd',
+      2,
+    ),
+    [
+      { id: 'a', siblingOrder: 1 },
+      { id: 'd', siblingOrder: 2 },
+      { id: 'b', siblingOrder: 3 },
+      { id: 'c', siblingOrder: 4 },
+    ],
+  );
+  assert.throws(
+    () =>
+      reindexSiblingOrders(
+        [
+          { id: 'a', siblingOrder: 1 },
+          { id: 'b', siblingOrder: 2 },
+        ],
+        'b',
+        3,
+      ),
+    /must be from 1 to 2/i,
   );
 });
 

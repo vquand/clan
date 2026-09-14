@@ -6,7 +6,7 @@ The repository contains only fictional sample records. Production data lives in 
 
 ## Features
 
-- searchable member directory with generation filters;
+- searchable member directory with sibling filtering for administrators;
 - member profiles with names, birth details, residence, relationships, life status, and lunar death anniversaries;
 - recursive family-tree view with horizontal navigation on small screens;
 - solar and manually verified lunar event calendar;
@@ -33,7 +33,7 @@ Public GitHub repository ── fictional samples + application code
 
 The browser-visible `NEXT_PUBLIC_API_URL` contains no secret. `DATABASE_URL` stays on Render, and `CLAN_DATA_JSON`/`CLAN_DATA_FILE` are used only when seeding Neon. Do not put either of those values in Vercel.
 
-The public archive remains read-only, while `/admin/` provides a protected workspace for maintaining records. The backend reads `ADMIN_USERNAME` and `ADMIN_PASSWORD` from its private environment and issues short-lived HttpOnly session cookies after login. Environment variables prevent source-code disclosure; they are not a substitute for publishing only information that the affected family members have agreed to share. Do not include identity numbers, private addresses, phone numbers, medical information, or other sensitive records.
+The public archive remains read-only until an administrator signs in from the archive footer. The backend reads `ADMIN_USERNAME` and `ADMIN_PASSWORD` from its private environment and issues short-lived HttpOnly session cookies after login. Environment variables prevent source-code disclosure; they are not a substitute for publishing only information that the affected family members have agreed to share. Do not include identity numbers, private addresses, phone numbers, medical information, or other sensitive records.
 
 The admin session protects changes to the database; it does not make records private once they are returned by `GET /api/clan`. If the records must remain confidential, the public read endpoint also needs authentication and authorization.
 
@@ -47,6 +47,18 @@ npm run dev
 ```
 
 Open the local address printed by Vinext. With no `NEXT_PUBLIC_API_URL`, the frontend uses the fictional records in [`data/members.ts`](data/members.ts) and [`data/events.ts`](data/events.ts).
+
+### Local demo API without Neon
+
+For a demo that uses the same API path as production, copy [`.env.example`](.env.example) to `.env` and leave `DATABASE_URL` empty. Start the API and frontend in separate terminals:
+
+```bash
+cp .env.example .env
+npm run start:api   # terminal 1, serves data/db.json
+npm run dev         # terminal 2
+```
+
+When `DATABASE_URL` is empty, the API reads the fictional records from [`data/db.json`](data/db.json) for `GET /api/clan` and authenticated `GET /api/admin/data`. This fallback is read-only: admin create, edit, reorder, and delete requests require a configured database URL. Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env` if you want to sign in to the demo admin view.
 
 To run the API locally, set `DATABASE_URL` to a Neon connection string, run the migration and seed it, then start the service:
 
@@ -77,7 +89,7 @@ npm run build
 
 The database uses relational `members` and `events` tables with generated UUID primary keys. Parent, spouse, event-member, and yearly solar-date associations live in dedicated relationship tables. Generation numbers are derived from those relationships rather than stored, and branch labels are optional display metadata rather than identifiers. Re-running `db:seed` replaces the relational dataset in one transaction. The production database retains the original JSON tables under `*_legacy_json` names as a migration backup; they are not read by the API or created by the new baseline.
 
-The active database migration path is a single squashed baseline at
+The active database migration path starts with a single squashed baseline at
 [`db/migrations/001_baseline.sql`](db/migrations/001_baseline.sql). The original
 15 migration files are preserved in
 [`db/migrations-archive/`](db/migrations-archive/) as an immutable rollback and
@@ -106,7 +118,7 @@ Required member fields (birth year and life status are optional when unknown):
 }
 ```
 
-Optional member fields include `familiarName`, `birthDate`, `deathYear`, `deathDate`, `ageAtDeath`, `ageAtDeathQualifier`, `deathAnniversaryLunar`, `hometown`, `residence`, and `biography`. Use `ageAtDeathQualifier` with `exact`, `approximately`, or `under` when the recorded age is qualified. Spouse references must be declared in both member records.
+Optional member fields include `familiarName`, `birthDate`, `siblingOrder`, `deathYear`, `deathDate`, `ageAtDeath`, `ageAtDeathQualifier`, `deathAnniversaryLunar`, `hometown`, `residence`, and `biography`. `siblingOrder` is an oldest-to-youngest rank used when a sibling group has incomplete birth records; the admin reorder control writes the complete group. Updating one member's rank automatically shifts the affected siblings and keeps the group numbered consecutively. Without a complete manual order, the tree uses exact birth date, then birth year. Use `ageAtDeathQualifier` with `exact`, `approximately`, or `under` when the recorded age is qualified. Spouse references must be declared in both member records.
 
 Required event fields:
 
@@ -169,7 +181,8 @@ The protected admin API uses:
 
 - `POST /api/admin/login`, `GET /api/admin/session`, and `POST /api/admin/logout` for the admin session;
 - `GET /api/admin/data` to load the editable dataset;
-- `POST|PATCH|DELETE /api/admin/members` and `/api/admin/members/:id` for member CRUD, parent/spouse links, and avatar fields;
+- `POST|PATCH|DELETE /api/admin/members` and `/api/admin/members/:id` for member CRUD, parent/spouse links, sibling order, and avatar fields;
+- `POST /api/admin/siblings/reorder` for saving a complete oldest-to-youngest sibling order;
 - `POST|PATCH|DELETE /api/admin/events` and `/api/admin/events/:id` for event CRUD and optional 0-to-many member links.
 
 The admin member avatar picker offers the four system avatar styles plus one custom image. Uploaded custom images are center-cropped to 64×64, compressed to a small JPEG/WebP data URL, limited to 24 KB, and validated again by the API and database before saving to Neon.
@@ -193,7 +206,7 @@ Set `API_URL` in Vercel's **Production** environment to the Render service origi
 
 Set `CLAN_DISPLAY_NAME` in the Vercel frontend build environment to the family name, for example `Đỗ Văn`. The public browser tab, archive header, and loading screen then use `Họ Đỗ Văn`. This value must be configured on the frontend build; a backend-only `.env` value cannot change a static Vercel page.
 
-Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and preferably a long random `ADMIN_SESSION_SECRET` only on the Render service. Never add them to Vercel or commit them to the repository. Open `/admin/` on the deployed Vercel site to use the workspace.
+Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and preferably a long random `ADMIN_SESSION_SECRET` only on the Render service. Never add them to Vercel or commit them to the repository. Sign in from the archive footer on the deployed Vercel site to use the management controls.
 
 ## Development commands
 
@@ -203,7 +216,7 @@ npm run test:browser    # desktop and mobile browser tests
 npm run validate:data   # validate sample, CLAN_DATA_JSON, or CLAN_DATA_FILE records
 npm run db:migrate      # apply the Neon schema (DATABASE_URL required)
 npm run db:seed         # seed Neon (DATABASE_URL plus optional CLAN_DATA_FILE)
-npm run start:api       # start the Render-compatible API locally
+npm run start:api       # start the API locally; empty DATABASE_URL uses data/db.json
 npm run lint            # source linting
 npx tsc --noEmit        # type checking
 npm run format -- --check
