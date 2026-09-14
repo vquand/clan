@@ -2,6 +2,8 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export const ADMIN_SESSION_COOKIE = 'clan_admin_session';
 export const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 8;
+export const GUEST_SESSION_COOKIE = 'clan_guest_session';
+export const GUEST_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 function encode(value) {
   return Buffer.from(value).toString('base64url');
@@ -27,10 +29,16 @@ function safeEqual(left, right) {
 export function createSessionToken(
   username,
   secret,
-  nowSeconds = Math.floor(Date.now() / 1000),
+  {
+    nowSeconds = Math.floor(Date.now() / 1000),
+    ttlSeconds = ADMIN_SESSION_TTL_SECONDS,
+  } = {},
 ) {
   const payload = encode(
-    JSON.stringify({ username, expiresAt: nowSeconds + ADMIN_SESSION_TTL_SECONDS }),
+    JSON.stringify({
+      username,
+      expiresAt: nowSeconds + ttlSeconds,
+    }),
   );
   return `${payload}.${sign(payload, secret)}`;
 }
@@ -92,8 +100,27 @@ export function getAdminConfig(env = process.env) {
   return { username, password, sessionSecret };
 }
 
+export function getGuestConfig(env = process.env) {
+  const password = env.GUEST_PASSWORD;
+  if (!password || password.trim().length < 8) return null;
+  return {
+    password,
+    sessionSecret: `clan-guest:${password}`,
+  };
+}
+
 export function credentialsMatch(username, password, config) {
   if (!config || typeof username !== 'string' || typeof password !== 'string')
     return false;
-  return safeEqual(username, config.username) && safeEqual(password, config.password);
+  return (
+    safeEqual(username, config.username) && safeEqual(password, config.password)
+  );
+}
+
+export function guestPasswordMatches(password, config) {
+  return Boolean(
+    config &&
+    typeof password === 'string' &&
+    safeEqual(password, config.password),
+  );
 }

@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  GUEST_SESSION_TTL_SECONDS,
   createSessionToken,
+  getGuestConfig,
   verifySessionToken,
 } from '../server/admin-auth.mjs';
 import {
@@ -19,13 +21,45 @@ import {
 } from '../server/clan-head.mjs';
 
 void test('creates and verifies an expiring admin session token', () => {
-  const token = createSessionToken('admin', 'test-secret', 1_000);
+  const token = createSessionToken('admin', 'test-secret', {
+    nowSeconds: 1_000,
+  });
 
   assert.equal(verifySessionToken(token, 'test-secret', 1_001), 'admin');
   assert.equal(verifySessionToken(token, 'wrong-secret', 1_001), null);
   assert.equal(
     verifySessionToken(token, 'test-secret', 1_000 + 60 * 60 * 9),
     null,
+  );
+});
+
+void test('keeps a guest session valid for thirty days', () => {
+  const token = createSessionToken('guest', 'test-secret', {
+    nowSeconds: 1_000,
+    ttlSeconds: GUEST_SESSION_TTL_SECONDS,
+  });
+
+  assert.equal(
+    verifySessionToken(token, 'test-secret', 1_000 + 60 * 60 * 24 * 29),
+    'guest',
+  );
+  assert.equal(
+    verifySessionToken(token, 'test-secret', 1_000 + 60 * 60 * 24 * 31),
+    null,
+  );
+});
+
+void test('requires a guest password long enough to resist simple guessing', () => {
+  assert.equal(
+    getGuestConfig({ NODE_ENV: 'test', GUEST_PASSWORD: 'short' }),
+    null,
+  );
+  assert.equal(
+    getGuestConfig({
+      NODE_ENV: 'test',
+      GUEST_PASSWORD: 'family-password',
+    })?.password,
+    'family-password',
   );
 });
 

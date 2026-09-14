@@ -49,6 +49,7 @@ import { AdminEventForm } from '@/components/admin/admin-event-form';
 import { AdminLocationForm } from '@/components/admin/admin-location-form';
 import { AdminMemberForm } from '@/components/admin/admin-member-form';
 import { AdminSiblingOrder } from '@/components/admin/admin-sibling-order';
+import { ThemeToggle } from '@/components/theme-toggle';
 import type { ClanEvent, ClanLocation, Member } from '@/data/types';
 import {
   buildCalendarDays,
@@ -564,7 +565,7 @@ function MembersView({
       </div>
       {filteredMembers.length ? (
         <div className="member-grid">
-          {filteredMembers.map((member) => (
+          {filteredMembers.map((member) =>
             admin ? (
               <div className="member-card-admin" key={member.id}>
                 {activeSiblingFilter && (
@@ -606,7 +607,8 @@ function MembersView({
                         }
                       }}
                       onBlur={() => {
-                        const value = siblingOrderDrafts[member.id] ??
+                        const value =
+                          siblingOrderDrafts[member.id] ??
                           String(siblingOrderById.get(member.id) ?? 1);
                         if (!/^[1-9]\d*$/.test(value)) {
                           setSiblingOrderErrors((current) => ({
@@ -644,7 +646,9 @@ function MembersView({
                       aria-label={`${translate(locale, 'adminSiblingOrder')} for ${member.fullName}`}
                     />
                     {siblingOrderErrors[member.id] && (
-                      <small role="alert">{siblingOrderErrors[member.id]}</small>
+                      <small role="alert">
+                        {siblingOrderErrors[member.id]}
+                      </small>
                     )}
                   </div>
                 )}
@@ -661,8 +665,8 @@ function MembersView({
                 locale={locale}
                 onSelect={onSelect}
               />
-            )
-          ))}
+            ),
+          )}
         </div>
       ) : (
         <output className="empty-state">
@@ -945,7 +949,10 @@ function TreeView({
         <p>{translate(locale, 'treeIntro')}</p>
       </div>
       {admin && (
-        <section className="admin-tree-tools" aria-labelledby="admin-tree-tools-heading">
+        <section
+          className="admin-tree-tools"
+          aria-labelledby="admin-tree-tools-heading"
+        >
           <div className="admin-tree-tools-heading">
             <div>
               <p className="eyebrow">{translate(locale, 'adminMode')}</p>
@@ -1305,7 +1312,9 @@ function CalendarView({
                   </span>
                 </div>
                 <div>
-                  <Badge variant="outline">{eventTypeLabel(event, locale)}</Badge>
+                  <Badge variant="outline">
+                    {eventTypeLabel(event, locale)}
+                  </Badge>
                   <h4 className="event-card__title" title={event.title}>
                     {event.title}
                   </h4>
@@ -1332,7 +1341,9 @@ function CalendarView({
               </button>
               {admin && (
                 <fieldset className="event-card-admin__actions">
-                  <legend className="sr-only">{event.title} admin actions</legend>
+                  <legend className="sr-only">
+                    {event.title} admin actions
+                  </legend>
                   <Button
                     type="button"
                     variant="outline"
@@ -1431,7 +1442,9 @@ function LocationsView({
                 )}
               </div>
               <fieldset className="location-card__actions">
-                <legend className="sr-only">{location.name} admin actions</legend>
+                <legend className="sr-only">
+                  {location.name} admin actions
+                </legend>
                 <Button
                   type="button"
                   variant="outline"
@@ -1686,11 +1699,9 @@ export function ClanArchive({
     null,
   );
   const isAdmin = adminStatus === 'authenticated' && Boolean(adminData);
-  const displayedMembers = isAdmin ? adminData?.members ?? members : members;
-  const displayedEvents = isAdmin ? adminData?.events ?? events : events;
-  const displayedLocations = isAdmin
-    ? adminData?.locations ?? []
-    : locations;
+  const displayedMembers = isAdmin ? (adminData?.members ?? members) : members;
+  const displayedEvents = isAdmin ? (adminData?.events ?? events) : events;
+  const displayedLocations = isAdmin ? (adminData?.locations ?? []) : locations;
   const visibleTabs = isAdmin ? tabs : tabs.slice(0, 3);
 
   async function loadAdminData() {
@@ -1966,6 +1977,7 @@ export function ClanArchive({
               </div>
             </fieldset>
           </div>
+          <ThemeToggle locale={locale} />
         </div>
       </header>
       {isAdmin && adminError && (
@@ -2068,8 +2080,9 @@ export function ClanArchive({
       <MemberDetail
         member={
           selectedMember
-            ? displayedMembers.find((member) => member.id === selectedMember.id) ??
-              selectedMember
+            ? (displayedMembers.find(
+                (member) => member.id === selectedMember.id,
+              ) ?? selectedMember)
             : null
         }
         members={displayedMembers}

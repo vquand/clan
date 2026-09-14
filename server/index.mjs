@@ -9,10 +9,14 @@ import { neon } from '@neondatabase/serverless';
 import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_TTL_SECONDS,
+  GUEST_SESSION_COOKIE,
+  GUEST_SESSION_TTL_SECONDS,
   credentialsMatch,
   createSessionToken,
   getAdminConfig,
   getCookie,
+  getGuestConfig,
+  guestPasswordMatches,
   parseCookies,
   verifySessionToken,
 } from './admin-auth.mjs';
@@ -63,9 +67,11 @@ function sendJson(response, status, payload, requestOrigin, extraHeaders = {}) {
   };
   if (corsOrigin) {
     headers['access-control-allow-origin'] = corsOrigin;
-    headers['access-control-allow-methods'] = 'GET, POST, PATCH, DELETE, OPTIONS';
+    headers['access-control-allow-methods'] =
+      'GET, POST, PATCH, DELETE, OPTIONS';
     headers['access-control-allow-headers'] = 'Content-Type';
-    if (corsOrigin !== '*') headers['access-control-allow-credentials'] = 'true';
+    if (corsOrigin !== '*')
+      headers['access-control-allow-credentials'] = 'true';
   }
   response.writeHead(status, headers);
   if (status === 204) {
@@ -119,9 +125,8 @@ export async function getClanData(database = sql) {
     eventMemberRows,
     eventSolarDateRows,
     locationRows,
-  ] =
-    await Promise.all([
-      database`
+  ] = await Promise.all([
+    database`
         SELECT
           id, full_name, familiar_name, gender, clan_relation, birth_year, birth_date,
           sibling_order,
@@ -133,17 +138,17 @@ export async function getClanData(database = sql) {
         FROM members
         ORDER BY full_name, id
       `,
-      database`
+    database`
         SELECT child_id, parent_id
         FROM member_parents
         ORDER BY child_id, parent_order, parent_id
       `,
-      database`
+    database`
         SELECT member_a_id, member_b_id
         FROM member_spouses
         ORDER BY member_a_id, member_b_id
       `,
-      database`
+    database`
         SELECT
           id, title, type, calendar, day, month, recurrence,
           event_year, location, location_id, location_address,
@@ -151,22 +156,22 @@ export async function getClanData(database = sql) {
         FROM events
         ORDER BY month, day, title, id
       `,
-      database`
+    database`
         SELECT event_id, member_id
         FROM event_members
         ORDER BY event_id, member_id
       `,
-      database`
+    database`
         SELECT event_id, year, solar_date
         FROM event_solar_dates
         ORDER BY event_id, year
       `,
-      database`
+    database`
         SELECT id, name, address, google_map_url
         FROM clan_locations
         ORDER BY name, id
       `,
-    ]);
+  ]);
 
   const data = assembleClanData({
     memberRows,
@@ -186,7 +191,9 @@ async function readJsonBody(request) {
   for await (const chunk of request) {
     size += chunk.length;
     if (size > 1_000_000) {
-      throw Object.assign(new Error('Request body is too large'), { status: 413 });
+      throw Object.assign(new Error('Request body is too large'), {
+        status: 413,
+      });
     }
     chunks.push(chunk);
   }
@@ -199,36 +206,68 @@ async function readJsonBody(request) {
     return value;
   } catch (error) {
     if (error?.status) throw error;
-    throw Object.assign(new Error('Request body must be valid JSON'), { status: 400 });
+    throw Object.assign(new Error('Request body must be valid JSON'), {
+      status: 400,
+    });
   }
 }
 
-function requestAdmin(request, env) {
+function hasAdminSession(request, env) {
   const config = getAdminConfig(env);
-  if (!config) {
+  if (!config) return false;
+  const token = getCookie(
+    parseCookies(request.headers.cookie ?? ''),
+    ADMIN_SESSION_COOKIE,
+  );
+  return verifySessionToken(token, config.sessionSecret) === config.username;
+}
+
+function hasGuestSession(request, env) {
+  const config = getGuestConfig(env);
+  if (!config) return false;
+  const token = getCookie(
+    parseCookies(request.headers.cookie ?? ''),
+    GUEST_SESSION_COOKIE,
+  );
+  return verifySessionToken(token, config.sessionSecret) === 'guest';
+}
+
+function requestAdmin(request, env) {
+  if (!getAdminConfig(env)) {
     throw Object.assign(new Error('Admin credentials are not configured'), {
       status: 503,
       code: 'ADMIN_NOT_CONFIGURED',
     });
   }
-  const token = getCookie(
-    parseCookies(request.headers.cookie ?? ''),
-    ADMIN_SESSION_COOKIE,
-  );
-  const username = verifySessionToken(token, config.sessionSecret);
-  if (username !== config.username) {
+  if (!hasAdminSession(request, env)) {
     throw Object.assign(new Error('Admin authentication is required'), {
       status: 401,
       code: 'UNAUTHENTICATED',
     });
   }
-  return config;
+}
+
+function requestClanReader(request, env) {
+  if (!getGuestConfig(env)) {
+    throw Object.assign(new Error('Guest access is not configured'), {
+      status: 503,
+      code: 'GUEST_ACCESS_NOT_CONFIGURED',
+    });
+  }
+  if (!hasGuestSession(request, env) && !hasAdminSession(request, env)) {
+    throw Object.assign(new Error('Guest authentication is required'), {
+      status: 401,
+      code: 'GUEST_AUTHENTICATION_REQUIRED',
+    });
+  }
 }
 
 function uuid(value, field) {
   if (
     typeof value !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    )
   ) {
     throw Object.assign(new Error(`${field} must be a UUID`), {
       status: 422,
@@ -403,7 +442,12 @@ async function createMember(database, body) {
     is_clan_head: headChange.isClanHead,
     is_previous_clan_head: headChange.isPreviousClanHead,
   };
-  await assertMemberRelationships(database, data, 'new-member', nextInput.parentIds);
+  await assertMemberRelationships(
+    database,
+    data,
+    'new-member',
+    nextInput.parentIds,
+  );
   await assertMemberIds(database, nextInput.spouseIds);
   const queries = [
     ...(headChange.previousHeadId
@@ -426,7 +470,9 @@ async function createMember(database, body) {
       : []),
   ];
   await database.transaction(queries);
-  return (await getClanData(database)).members.find((member) => member.id === id);
+  return (await getClanData(database)).members.find(
+    (member) => member.id === id,
+  );
 }
 
 async function updateMember(database, id, body) {
@@ -434,7 +480,10 @@ async function updateMember(database, id, body) {
   const data = await getClanData(database);
   const current = data.members.find((member) => member.id === id);
   if (!current) {
-    throw Object.assign(new Error('Member not found'), { status: 404, code: 'NOT_FOUND' });
+    throw Object.assign(new Error('Member not found'), {
+      status: 404,
+      code: 'NOT_FOUND',
+    });
   }
   const input = normalizeAdminInput(
     normalizeMemberInput,
@@ -555,7 +604,9 @@ async function updateMember(database, id, body) {
       : []),
   ];
   await database.transaction(queries);
-  return (await getClanData(database)).members.find((member) => member.id === id);
+  return (await getClanData(database)).members.find(
+    (member) => member.id === id,
+  );
 }
 
 async function reorderSiblings(database, body) {
@@ -564,7 +615,9 @@ async function reorderSiblings(database, body) {
     uuid(memberId, 'Member ID'),
   );
   const data = await getClanData(database);
-  const membersById = new Map(data.members.map((member) => [member.id, member]));
+  const membersById = new Map(
+    data.members.map((member) => [member.id, member]),
+  );
   const anchor = membersById.get(memberIds[0]);
 
   if (!anchor || anchor.parentIds.length === 0) {
@@ -613,9 +666,13 @@ async function reorderSiblings(database, body) {
 
 async function deleteMember(database, id) {
   uuid(id, 'Member ID');
-  const result = await database`DELETE FROM members WHERE id = ${id}::uuid RETURNING id`;
+  const result =
+    await database`DELETE FROM members WHERE id = ${id}::uuid RETURNING id`;
   if (result.length === 0) {
-    throw Object.assign(new Error('Member not found'), { status: 404, code: 'NOT_FOUND' });
+    throw Object.assign(new Error('Member not found'), {
+      status: 404,
+      code: 'NOT_FOUND',
+    });
   }
 }
 
@@ -708,7 +765,9 @@ async function createLocation(database, body) {
       VALUES (${id}::uuid, ${input.name}, ${input.address}, ${input.google_map_url})
     `,
   ]);
-  return (await getClanData(database)).locations?.find((location) => location.id === id);
+  return (await getClanData(database)).locations?.find(
+    (location) => location.id === id,
+  );
 }
 
 async function updateLocation(database, id, body) {
@@ -722,9 +781,14 @@ async function updateLocation(database, id, body) {
     RETURNING id
   `;
   if (result.length === 0) {
-    throw Object.assign(new Error('Location not found'), { status: 404, code: 'NOT_FOUND' });
+    throw Object.assign(new Error('Location not found'), {
+      status: 404,
+      code: 'NOT_FOUND',
+    });
   }
-  return (await getClanData(database)).locations?.find((location) => location.id === id);
+  return (await getClanData(database)).locations?.find(
+    (location) => location.id === id,
+  );
 }
 
 async function deleteLocation(database, id) {
@@ -735,7 +799,10 @@ async function deleteLocation(database, id) {
     RETURNING id
   `;
   if (result.length === 0) {
-    throw Object.assign(new Error('Location not found'), { status: 404, code: 'NOT_FOUND' });
+    throw Object.assign(new Error('Location not found'), {
+      status: 404,
+      code: 'NOT_FOUND',
+    });
   }
 }
 
@@ -753,7 +820,10 @@ async function updateEvent(database, id, body) {
   const data = await getClanData(database);
   const current = data.events.find((event) => event.id === id);
   if (!current) {
-    throw Object.assign(new Error('Event not found'), { status: 404, code: 'NOT_FOUND' });
+    throw Object.assign(new Error('Event not found'), {
+      status: 404,
+      code: 'NOT_FOUND',
+    });
   }
   const input = normalizeAdminInput(normalizeEventInput, {
     ...eventAsInput(current),
@@ -794,15 +864,68 @@ async function updateEvent(database, id, body) {
 
 async function deleteEvent(database, id) {
   uuid(id, 'Event ID');
-  const result = await database`DELETE FROM events WHERE id = ${id}::uuid RETURNING id`;
+  const result =
+    await database`DELETE FROM events WHERE id = ${id}::uuid RETURNING id`;
   if (result.length === 0) {
-    throw Object.assign(new Error('Event not found'), { status: 404, code: 'NOT_FOUND' });
+    throw Object.assign(new Error('Event not found'), {
+      status: 404,
+      code: 'NOT_FOUND',
+    });
   }
 }
 
-function cookieHeader(token, maxAge, secure) {
+const LOGIN_ATTEMPT_LIMIT = 10;
+const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1_000;
+
+function createLoginLimiter(now = Date.now) {
+  const failures = new Map();
+
+  function getKey(request, scope) {
+    return `${scope}:${request.socket.remoteAddress ?? 'unknown'}`;
+  }
+
+  return {
+    retryAfter(request, scope) {
+      const key = getKey(request, scope);
+      const entry = failures.get(key);
+      if (!entry) return 0;
+      const remainingMs = entry.expiresAt - now();
+      if (remainingMs <= 0) {
+        failures.delete(key);
+        return 0;
+      }
+      return entry.count >= LOGIN_ATTEMPT_LIMIT
+        ? Math.ceil(remainingMs / 1_000)
+        : 0;
+    },
+    recordFailure(request, scope) {
+      const key = getKey(request, scope);
+      const current = failures.get(key);
+      if (!current || current.expiresAt <= now()) {
+        failures.set(key, {
+          count: 1,
+          expiresAt: now() + LOGIN_ATTEMPT_WINDOW_MS,
+        });
+        return;
+      }
+      current.count += 1;
+    },
+    clear(request, scope) {
+      failures.delete(getKey(request, scope));
+    },
+  };
+}
+
+function secureRequest(request, env) {
+  const forwardedProtocol = Array.isArray(request.headers['x-forwarded-proto'])
+    ? request.headers['x-forwarded-proto'][0]
+    : request.headers['x-forwarded-proto']?.split(',')[0]?.trim();
+  return env.NODE_ENV === 'production' || forwardedProtocol === 'https';
+}
+
+function cookieHeader(name, token, maxAge, secure) {
   return [
-    `${ADMIN_SESSION_COOKIE}=${token}`,
+    `${name}=${token}`,
     'Path=/',
     'HttpOnly',
     'SameSite=Lax',
@@ -811,7 +934,76 @@ function cookieHeader(token, maxAge, secure) {
   ].join('; ');
 }
 
-async function handleAdminRequest(request, response, url, env, database) {
+function sendLoginRateLimit(response, requestOrigin, retryAfter) {
+  sendJson(
+    response,
+    429,
+    errorPayload(
+      'TOO_MANY_LOGIN_ATTEMPTS',
+      'Too many login attempts; try again later',
+    ),
+    requestOrigin,
+    { 'retry-after': String(retryAfter) },
+  );
+}
+
+async function handleGuestRequest(request, response, url, env, loginLimiter) {
+  if (url.pathname === '/api/guest/login' && request.method === 'POST') {
+    const config = getGuestConfig(env);
+    if (!config) {
+      sendJson(
+        response,
+        503,
+        errorPayload(
+          'GUEST_ACCESS_NOT_CONFIGURED',
+          'Guest access is not configured',
+        ),
+        request.headers.origin,
+      );
+      return true;
+    }
+    const retryAfter = loginLimiter.retryAfter(request, 'guest');
+    if (retryAfter > 0) {
+      sendLoginRateLimit(response, request.headers.origin, retryAfter);
+      return true;
+    }
+    const body = await readJsonBody(request);
+    if (!guestPasswordMatches(body.password, config)) {
+      loginLimiter.recordFailure(request, 'guest');
+      sendJson(
+        response,
+        401,
+        errorPayload('INVALID_GUEST_PASSWORD', 'Invalid guest password'),
+        request.headers.origin,
+      );
+      return true;
+    }
+    loginLimiter.clear(request, 'guest');
+    const token = createSessionToken('guest', config.sessionSecret, {
+      ttlSeconds: GUEST_SESSION_TTL_SECONDS,
+    });
+    sendJson(response, 200, { authenticated: true }, request.headers.origin, {
+      'set-cookie': cookieHeader(
+        GUEST_SESSION_COOKIE,
+        token,
+        GUEST_SESSION_TTL_SECONDS,
+        secureRequest(request, env),
+      ),
+    });
+    return true;
+  }
+
+  return false;
+}
+
+async function handleAdminRequest(
+  request,
+  response,
+  url,
+  env,
+  database,
+  loginLimiter,
+) {
   if (url.pathname === '/api/admin/session' && request.method === 'GET') {
     const config = getAdminConfig(env);
     const token = getCookie(
@@ -819,7 +1011,8 @@ async function handleAdminRequest(request, response, url, env, database) {
       ADMIN_SESSION_COOKIE,
     );
     const authenticated = Boolean(
-      config && verifySessionToken(token, config.sessionSecret) === config.username,
+      config &&
+      verifySessionToken(token, config.sessionSecret) === config.username,
     );
     sendJson(response, 200, { authenticated }, request.headers.origin);
     return true;
@@ -831,41 +1024,54 @@ async function handleAdminRequest(request, response, url, env, database) {
       sendJson(
         response,
         503,
-        errorPayload('ADMIN_NOT_CONFIGURED', 'Admin credentials are not configured'),
+        errorPayload(
+          'ADMIN_NOT_CONFIGURED',
+          'Admin credentials are not configured',
+        ),
         request.headers.origin,
       );
+      return true;
+    }
+    const retryAfter = loginLimiter.retryAfter(request, 'admin');
+    if (retryAfter > 0) {
+      sendLoginRateLimit(response, request.headers.origin, retryAfter);
       return true;
     }
     const body = await readJsonBody(request);
     if (!credentialsMatch(body.username, body.password, config)) {
+      loginLimiter.recordFailure(request, 'admin');
       sendJson(
         response,
         401,
-        errorPayload('INVALID_CREDENTIALS', 'Invalid admin username or password'),
+        errorPayload(
+          'INVALID_CREDENTIALS',
+          'Invalid admin username or password',
+        ),
         request.headers.origin,
       );
       return true;
     }
+    loginLimiter.clear(request, 'admin');
     const token = createSessionToken(config.username, config.sessionSecret);
-    sendJson(
-      response,
-      200,
-      { authenticated: true },
-      request.headers.origin,
-      {
-        'set-cookie': cookieHeader(
-          token,
-          ADMIN_SESSION_TTL_SECONDS,
-          env.NODE_ENV === 'production',
-        ),
-      },
-    );
+    sendJson(response, 200, { authenticated: true }, request.headers.origin, {
+      'set-cookie': cookieHeader(
+        ADMIN_SESSION_COOKIE,
+        token,
+        ADMIN_SESSION_TTL_SECONDS,
+        secureRequest(request, env),
+      ),
+    });
     return true;
   }
 
   if (url.pathname === '/api/admin/logout' && request.method === 'POST') {
     sendJson(response, 200, { authenticated: false }, request.headers.origin, {
-      'set-cookie': cookieHeader('', 0, env.NODE_ENV === 'production'),
+      'set-cookie': cookieHeader(
+        ADMIN_SESSION_COOKIE,
+        '',
+        0,
+        secureRequest(request, env),
+      ),
     });
     return true;
   }
@@ -886,7 +1092,9 @@ async function handleAdminRequest(request, response, url, env, database) {
 
   if (!database) {
     throw Object.assign(
-      new Error('The demo database is read-only; configure DATABASE_URL to enable admin writes'),
+      new Error(
+        'The demo database is read-only; configure DATABASE_URL to enable admin writes',
+      ),
       { status: 503, code: 'DEMO_DATABASE_READ_ONLY' },
     );
   }
@@ -895,21 +1103,33 @@ async function handleAdminRequest(request, response, url, env, database) {
     url.pathname === '/api/admin/siblings/reorder' &&
     request.method === 'POST'
   ) {
-    const members = await reorderSiblings(database, await readJsonBody(request));
+    const members = await reorderSiblings(
+      database,
+      await readJsonBody(request),
+    );
     sendJson(response, 200, members, request.headers.origin);
     return true;
   }
 
-  const locationMatch = url.pathname.match(/^\/api\/admin\/locations(?:\/([^/]+))?$/);
+  const locationMatch = url.pathname.match(
+    /^\/api\/admin\/locations(?:\/([^/]+))?$/,
+  );
   if (locationMatch) {
     const id = locationMatch[1] ? decodeURIComponent(locationMatch[1]) : null;
     if (request.method === 'POST' && !id) {
-      const location = await createLocation(database, await readJsonBody(request));
+      const location = await createLocation(
+        database,
+        await readJsonBody(request),
+      );
       sendJson(response, 201, location, request.headers.origin);
       return true;
     }
     if (request.method === 'PATCH' && id) {
-      const location = await updateLocation(database, id, await readJsonBody(request));
+      const location = await updateLocation(
+        database,
+        id,
+        await readJsonBody(request),
+      );
       sendJson(response, 200, location, request.headers.origin);
       return true;
     }
@@ -920,7 +1140,9 @@ async function handleAdminRequest(request, response, url, env, database) {
     }
   }
 
-  const memberMatch = url.pathname.match(/^\/api\/admin\/members(?:\/([^/]+))?$/);
+  const memberMatch = url.pathname.match(
+    /^\/api\/admin\/members(?:\/([^/]+))?$/,
+  );
   if (memberMatch) {
     const id = memberMatch[1] ? decodeURIComponent(memberMatch[1]) : null;
     if (request.method === 'POST' && !id) {
@@ -929,7 +1151,11 @@ async function handleAdminRequest(request, response, url, env, database) {
       return true;
     }
     if (request.method === 'PATCH' && id) {
-      const member = await updateMember(database, id, await readJsonBody(request));
+      const member = await updateMember(
+        database,
+        id,
+        await readJsonBody(request),
+      );
       sendJson(response, 200, member, request.headers.origin);
       return true;
     }
@@ -949,7 +1175,11 @@ async function handleAdminRequest(request, response, url, env, database) {
       return true;
     }
     if (request.method === 'PATCH' && id) {
-      const event = await updateEvent(database, id, await readJsonBody(request));
+      const event = await updateEvent(
+        database,
+        id,
+        await readJsonBody(request),
+      );
       sendJson(response, 200, event, request.headers.origin);
       return true;
     }
@@ -970,6 +1200,7 @@ async function handleAdminRequest(request, response, url, env, database) {
 }
 
 export function createApiHandler({ database = sql, env = process.env } = {}) {
+  const loginLimiter = createLoginLimiter();
   return async (request, response) => {
     const requestOrigin = request.headers.origin;
     const url = new URL(
@@ -983,7 +1214,19 @@ export function createApiHandler({ database = sql, env = process.env } = {}) {
     }
 
     try {
-      if (await handleAdminRequest(request, response, url, env, database)) return;
+      if (await handleGuestRequest(request, response, url, env, loginLimiter))
+        return;
+      if (
+        await handleAdminRequest(
+          request,
+          response,
+          url,
+          env,
+          database,
+          loginLimiter,
+        )
+      )
+        return;
 
       if (request.method === 'GET' && url.pathname === '/health') {
         sendJson(response, 200, { status: 'ok' }, requestOrigin);
@@ -991,25 +1234,43 @@ export function createApiHandler({ database = sql, env = process.env } = {}) {
       }
 
       if (request.method === 'GET' && url.pathname === '/api/clan') {
+        requestClanReader(request, env);
         const data = await getClanData(database);
         if (!data) {
-          sendJson(response, 404, { error: 'Clan data has not been seeded' }, requestOrigin);
+          sendJson(
+            response,
+            404,
+            { error: 'Clan data has not been seeded' },
+            requestOrigin,
+          );
           return;
         }
         sendJson(response, 200, data, requestOrigin);
         return;
       }
 
-      sendJson(response, 404, errorPayload('NOT_FOUND', 'Not found'), requestOrigin);
+      sendJson(
+        response,
+        404,
+        errorPayload('NOT_FOUND', 'Not found'),
+        requestOrigin,
+      );
     } catch (error) {
       const status = error?.status ?? 503;
       const code =
-        error?.code ?? (status === 422 ? 'VALIDATION_ERROR' : 'SERVICE_UNAVAILABLE');
-      const message = status >= 500
-        ? 'The clan service is temporarily unavailable'
-        : error.message;
+        error?.code ??
+        (status === 422 ? 'VALIDATION_ERROR' : 'SERVICE_UNAVAILABLE');
+      const message =
+        status >= 500
+          ? 'The clan service is temporarily unavailable'
+          : error.message;
       if (status >= 500) console.error('Clan API request failed', error);
-      sendJson(response, status, errorPayload(code, message, error?.details), requestOrigin);
+      sendJson(
+        response,
+        status,
+        errorPayload(code, message, error?.details),
+        requestOrigin,
+      );
     }
   };
 }

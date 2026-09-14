@@ -13,6 +13,164 @@ async function serveSampleData(page: Page) {
   });
 }
 
+test('unlocks the archive with one shared family password', async ({
+  page,
+}) => {
+  let unlocked = false;
+  await page.route('**/api/clan', async (route) => {
+    if (!unlocked) {
+      await route.fulfill({
+        status: 401,
+        json: {
+          error: {
+            code: 'GUEST_AUTHENTICATION_REQUIRED',
+            message: 'Guest authentication is required',
+          },
+        },
+      });
+      return;
+    }
+    await route.fulfill({ json: { members, events: clanEvents } });
+  });
+  await page.route('**/api/guest/login', async (route) => {
+    const body = route.request().postDataJSON() as { password?: string };
+    if (body.password !== 'family-password') {
+      await route.fulfill({
+        status: 401,
+        json: {
+          error: {
+            code: 'INVALID_GUEST_PASSWORD',
+            message: 'Invalid guest password',
+          },
+        },
+      });
+      return;
+    }
+    unlocked = true;
+    await route.fulfill({ json: { authenticated: true } });
+  });
+  await page.route('**/api/admin/session', async (route) => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Gia phả họ Đỗ Văn' }),
+  ).toBeVisible();
+
+  const password = page.getByLabel('Mật khẩu gia đình');
+  const accessPanel = page.locator('.guest-access__panel');
+  const adminSwitch = page.getByRole('button', { name: 'Quản trị' });
+  const panelBox = await accessPanel.boundingBox();
+  const adminSwitchBox = await adminSwitch.boundingBox();
+  expect(panelBox).not.toBeNull();
+  expect(adminSwitchBox).not.toBeNull();
+  expect(adminSwitchBox?.y).toBeGreaterThan(
+    (panelBox?.y ?? 0) + (panelBox?.height ?? 0),
+  );
+
+  await adminSwitch.click();
+  await expect(password).toHaveCount(0);
+  await expect(page.getByLabel('Tên đăng nhập')).toBeFocused();
+  await expect(page.getByLabel('Mật khẩu quản trị')).toBeVisible();
+
+  await page
+    .getByRole('button', { name: 'Quay lại mật khẩu gia đình' })
+    .click();
+  await expect(password).toBeFocused();
+
+  await password.fill('wrong');
+  await page.getByRole('button', { name: 'Mở gia phả' }).click();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Mật khẩu chưa đúng. Vui lòng thử lại.',
+  );
+
+  await password.fill('family-password');
+  await page.getByRole('button', { name: 'Mở gia phả' }).click();
+  await expect(page.getByRole('heading', { name: 'Họ Đỗ Văn' })).toBeVisible();
+});
+
+test('admin can sign in from the shared access screen', async ({ page }) => {
+  let authenticated = false;
+  await page.route('**/api/clan', async (route) => {
+    if (!authenticated) {
+      await route.fulfill({
+        status: 401,
+        json: {
+          error: {
+            code: 'GUEST_AUTHENTICATION_REQUIRED',
+            message: 'Guest authentication is required',
+          },
+        },
+      });
+      return;
+    }
+    await route.fulfill({ json: { members, events: clanEvents } });
+  });
+  await page.route('**/api/admin/login', async (route) => {
+    const body = route.request().postDataJSON() as {
+      username?: string;
+      password?: string;
+    };
+    authenticated =
+      body.username === 'admin' && body.password === 'admin-password';
+    await route.fulfill({
+      status: authenticated ? 200 : 401,
+      json: authenticated
+        ? { authenticated: true }
+        : {
+            error: {
+              code: 'INVALID_CREDENTIALS',
+              message: 'Invalid admin username or password',
+            },
+          },
+    });
+  });
+  await page.route('**/api/admin/session', async (route) => {
+    await route.fulfill({ json: { authenticated } });
+  });
+  await page.route('**/api/admin/data', async (route) => {
+    await route.fulfill({
+      json: { members, events: clanEvents, locations: [] },
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Quản trị' }).click();
+  await page.getByLabel('Tên đăng nhập').fill('admin');
+  await page.getByLabel('Mật khẩu quản trị').fill('admin-password');
+  await page.getByRole('button', { name: 'Đăng nhập' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Họ Đỗ Văn' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Địa điểm' })).toBeVisible();
+});
+
+test('toggles and remembers dark mode', async ({ page }) => {
+  await serveSampleData(page);
+  await page.goto('/');
+
+  const darkMode = page.getByRole('button', { name: 'Bật chế độ tối' });
+  await expect(darkMode).toBeVisible();
+  await darkMode.click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await expect(
+    page.getByRole('button', { name: 'Bật chế độ sáng' }),
+  ).toBeVisible();
+  await expect(
+    page.evaluate(() => localStorage.getItem('clan-theme')),
+  ).resolves.toBe('dark');
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.getByRole('button', { name: 'Bật chế độ sáng' }).click();
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
+  await expect(
+    page.getByRole('button', { name: 'Bật chế độ tối' }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
+});
+
 test('member search, profile, tree, and calendar work without browser errors', async ({
   page,
 }, testInfo) => {
@@ -102,7 +260,9 @@ test('member search, profile, tree, and calendar work without browser errors', a
   await page.getByRole('button', { name: 'Close' }).click();
 
   await page.getByRole('tab', { name: 'Gia phả' }).click();
-  await expect(page.getByRole('heading', { name: '3 thế hệ' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: '3 thế hệ', exact: true }),
+  ).toBeVisible();
   await expect(page.locator('.family-tree')).toContainText('Nguyễn Minh Khánh');
   await expect(page.locator('.tree-roots > li')).toHaveCount(1);
   await expect(
@@ -439,7 +599,13 @@ test('admin can edit members and manage events and locations from the main tabs'
     members: members.map((member) => ({
       ...member,
       siblingOrder:
-        member.id === 'chi' ? 1 : member.id === 'binh' ? 2 : member.id === 'dung' ? 3 : member.siblingOrder,
+        member.id === 'chi'
+          ? 1
+          : member.id === 'binh'
+            ? 2
+            : member.id === 'dung'
+              ? 3
+              : member.siblingOrder,
     })),
     events: [],
     locations: [],
@@ -490,7 +656,9 @@ test('admin can edit members and manage events and locations from the main tabs'
   await page.getByRole('tab', { name: 'Thành viên' }).click();
   await page.getByLabel('Xem anh chị em của').selectOption('chi');
   await expect(page.locator('.member-card-admin')).toHaveCount(3);
-  await expect(page.locator('.member-card-admin').nth(0)).toContainText('Nguyễn Thị Chi');
+  await expect(page.locator('.member-card-admin').nth(0)).toContainText(
+    'Nguyễn Thị Chi',
+  );
   await expect(page.locator('#member-order-chi')).toHaveValue('1');
   await page.locator('#member-order-chi').fill('2');
   await page.locator('#member-order-chi').press('Enter');
@@ -537,30 +705,31 @@ test('admin can edit members and manage events and locations from the main tabs'
   );
   expect(
     controlMetrics.every(
-      (metric) => Math.abs(Number.parseFloat(metric.width) - metric.fieldWidth) < 1,
+      (metric) =>
+        Math.abs(Number.parseFloat(metric.width) - metric.fieldWidth) < 1,
     ),
   ).toBe(true);
   expect(
     new Set(controlMetrics.map((metric) => metric.backgroundColor)).size,
   ).toBe(1);
-  const disabledBackgrounds = await page.locator(
-    '.member-sheet .admin-form',
-  ).evaluate((form) => {
-    const input = document.createElement('input');
-    input.setAttribute('data-slot', 'input');
-    input.disabled = true;
-    const select = document.createElement('select');
-    select.className = 'admin-select';
-    select.disabled = true;
-    form.append(input, select);
-    const colors = [
-      getComputedStyle(input).backgroundColor,
-      getComputedStyle(select).backgroundColor,
-    ];
-    input.remove();
-    select.remove();
-    return colors;
-  });
+  const disabledBackgrounds = await page
+    .locator('.member-sheet .admin-form')
+    .evaluate((form) => {
+      const input = document.createElement('input');
+      input.setAttribute('data-slot', 'input');
+      input.disabled = true;
+      const select = document.createElement('select');
+      select.className = 'admin-select';
+      select.disabled = true;
+      form.append(input, select);
+      const colors = [
+        getComputedStyle(input).backgroundColor,
+        getComputedStyle(select).backgroundColor,
+      ];
+      input.remove();
+      select.remove();
+      return colors;
+    });
   expect(new Set(disabledBackgrounds).size).toBe(1);
   expect(disabledBackgrounds[0]).not.toBe(controlMetrics[0].backgroundColor);
   const parentsPicker = page.locator('.admin-field:has(#member-parents)');
@@ -685,12 +854,18 @@ test('admin can drag sibling order in the main tree and save it', async ({
       .locator('.admin-sibling-order-title')
       .filter({ hasText: 'Children of Solo Parent' }),
   ).toBeVisible();
-  const editor = page.locator('.admin-tree-sibling-groups .admin-sibling-order').first();
+  const editor = page
+    .locator('.admin-tree-sibling-groups .admin-sibling-order')
+    .first();
   await expect(editor).toBeVisible();
-  const namesBefore = await editor.locator('.admin-sibling-order-name').allTextContents();
+  const namesBefore = await editor
+    .locator('.admin-sibling-order-name')
+    .allTextContents();
   const handles = editor.getByRole('button', { name: /Reorder/ });
   await handles.last().dragTo(editor.locator('li').first());
-  const namesAfter = await editor.locator('.admin-sibling-order-name').allTextContents();
+  const namesAfter = await editor
+    .locator('.admin-sibling-order-name')
+    .allTextContents();
   expect(namesAfter).toEqual([namesBefore.at(-1), ...namesBefore.slice(0, -1)]);
   await editor.getByRole('button', { name: 'Save order' }).click();
   await expect.poll(() => lastOrder.length).toBe(namesBefore.length);

@@ -3,8 +3,11 @@ import test from 'node:test';
 
 import { DEFAULT_LOCALE, getIntlLocale, translate } from '../lib/i18n.ts';
 import {
+  normalizeTheme,
   normalizeReadingSize,
+  readThemePreference,
   readReadingSizePreference,
+  writeThemePreference,
   writeReadingSizePreference,
 } from '../lib/preferences.ts';
 
@@ -46,4 +49,19 @@ void test('reading preferences tolerate unavailable browser storage', () => {
   assert.doesNotThrow(() =>
     writeReadingSizePreference(blockedStorage, 'extra-large'),
   );
+});
+
+void test('dark-mode preferences normalize and persist safely', () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+  };
+
+  assert.equal(normalizeTheme('dark'), 'dark');
+  assert.equal(normalizeTheme('unexpected'), 'light');
+  assert.equal(readThemePreference(storage), 'light');
+
+  writeThemePreference(storage, 'dark');
+  assert.equal(readThemePreference(storage), 'dark');
 });

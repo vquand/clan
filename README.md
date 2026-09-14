@@ -33,9 +33,9 @@ Public GitHub repository ── fictional samples + application code
 
 The browser-visible `NEXT_PUBLIC_API_URL` contains no secret. `DATABASE_URL` stays on Render, and `CLAN_DATA_JSON`/`CLAN_DATA_FILE` are used only when seeding Neon. Do not put either of those values in Vercel.
 
-The public archive remains read-only until an administrator signs in from the archive footer. The backend reads `ADMIN_USERNAME` and `ADMIN_PASSWORD` from its private environment and issues short-lived HttpOnly session cookies after login. Environment variables prevent source-code disclosure; they are not a substitute for publishing only information that the affected family members have agreed to share. Do not include identity numbers, private addresses, phone numbers, medical information, or other sensitive records.
+The archive is private by default. The backend reads one shared `GUEST_PASSWORD` of at least eight characters from its private environment. Family members enter only that password—there are no guest usernames or accounts—and receive a 30-day HttpOnly session cookie on the device. Administrators still use the separate credentials in `ADMIN_USERNAME` and `ADMIN_PASSWORD` for editing.
 
-The admin session protects changes to the database; it does not make records private once they are returned by `GET /api/clan`. If the records must remain confidential, the public read endpoint also needs authentication and authorization.
+`GET /api/clan` accepts either a guest session or an admin session and fails closed when `GUEST_PASSWORD` is missing. Keep all passwords on the API service, never in Vercel's frontend environment. A shared password is appropriate for one trusted family group, but it should be changed whenever access must be withdrawn from someone who knows it.
 
 ## Quick start
 
@@ -58,7 +58,7 @@ npm run start:api   # terminal 1, serves data/db.json
 npm run dev         # terminal 2
 ```
 
-When `DATABASE_URL` is empty, the API reads the fictional records from [`data/db.json`](data/db.json) for `GET /api/clan` and authenticated `GET /api/admin/data`. This fallback is read-only: admin create, edit, reorder, and delete requests require a configured database URL. Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env` if you want to sign in to the demo admin view.
+When `DATABASE_URL` is empty, the API reads the fictional records from [`data/db.json`](data/db.json) for `GET /api/clan` and authenticated `GET /api/admin/data`. This fallback is read-only: admin create, edit, reorder, and delete requests require a configured database URL. Set `GUEST_PASSWORD` in `.env` to open the demo archive, and set `ADMIN_USERNAME` and `ADMIN_PASSWORD` if you also want the admin view.
 
 To run the API locally, set `DATABASE_URL` to a Neon connection string, run the migration and seed it, then start the service:
 
@@ -170,12 +170,14 @@ Create a Neon project and copy its pooled Postgres connection string. The Render
 [`render.yaml`](render.yaml) defines the Node web service. Create a Render Blueprint from this repository, then set:
 
 - `DATABASE_URL`: the Neon connection string;
-- `CORS_ORIGINS`: the exact Vercel production URL, plus any preview URLs you need.
+- `CORS_ORIGINS`: the exact Vercel production URL, plus any preview URLs you need;
+- `GUEST_PASSWORD`: the shared password family members use to view the archive.
 
 Render runs `db:migrate` before starting the API and exposes:
 
 - `GET /health` for the Render health check;
-- `GET /api/clan` for the Vercel frontend.
+- `POST /api/guest/login` for password-only guest access;
+- authenticated `GET /api/clan` for the Vercel frontend.
 
 The protected admin API uses:
 
@@ -206,7 +208,7 @@ Set `API_URL` in Vercel's **Production** environment to the Render service origi
 
 Set `CLAN_DISPLAY_NAME` in the Vercel frontend build environment to the family name, for example `Đỗ Văn`. The public browser tab, archive header, and loading screen then use `Họ Đỗ Văn`. This value must be configured on the frontend build; a backend-only `.env` value cannot change a static Vercel page.
 
-Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and preferably a long random `ADMIN_SESSION_SECRET` only on the Render service. Never add them to Vercel or commit them to the repository. Sign in from the archive footer on the deployed Vercel site to use the management controls.
+Set `GUEST_PASSWORD`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and preferably a long random `ADMIN_SESSION_SECRET` only on the Render service. Never add them to Vercel or commit them to the repository. Visitors use the shared guest password on the opening screen; administrators then sign in from the archive footer to use the management controls.
 
 ## Development commands
 

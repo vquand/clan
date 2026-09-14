@@ -4,12 +4,20 @@ import { AlertTriangle, LoaderCircle, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { ClanArchive } from '@/components/clan-archive';
+import { GuestAccessGate } from '@/components/guest-access-gate';
 import { Button } from '@/components/ui/button';
-import { fetchClanData, getClanApiEndpoint } from '@/lib/clan-api';
+import { loginAdmin } from '@/lib/admin-api';
+import {
+  ClanApiError,
+  fetchClanData,
+  getClanApiEndpoint,
+  loginGuest,
+} from '@/lib/clan-api';
 import type { ClanData } from '@/lib/clan-contract';
 
 type LoadState =
   | { status: 'loading' }
+  | { status: 'locked' }
   | { status: 'ready'; data: ClanData; isSample: boolean }
   | { status: 'error' };
 
@@ -86,12 +94,34 @@ export function ClanDataLoader({
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError')
           return;
+        if (error instanceof ClanApiError && error.status === 401) {
+          setState({ status: 'locked' });
+          return;
+        }
         console.error('Unable to load the clan archive from the API', error);
         setState({ status: 'error' });
       });
 
     return () => controller.abort();
   }, [attempt, endpoint]);
+
+  if (state.status === 'locked') {
+    return (
+      <GuestAccessGate
+        clanDisplayName={clanDisplayName}
+        onUnlock={async (password) => {
+          await loginGuest(password);
+          setState({ status: 'loading' });
+          setAttempt((value) => value + 1);
+        }}
+        onAdminUnlock={async (username, password) => {
+          await loginAdmin(username, password);
+          setState({ status: 'loading' });
+          setAttempt((value) => value + 1);
+        }}
+      />
+    );
+  }
 
   if (state.status !== 'ready') {
     return (

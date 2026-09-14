@@ -93,15 +93,36 @@ export function getSiblings(id: string, allMembers: Member[]) {
 }
 
 export function getRelatives(member: Member, allMembers: Member[]) {
-  return allMembers.filter(
-    (candidate) =>
-      candidate.id !== member.id &&
-      (member.parentIds.includes(candidate.id) ||
-        member.spouseIds.includes(candidate.id) ||
-        candidate.parentIds.includes(member.id) ||
-        (member.parentIds.length > 0 &&
-          member.parentIds.some((id) => candidate.parentIds.includes(id)))),
+  const parents = member.parentIds
+    .map((id) => getMember(id, allMembers))
+    .filter((related): related is Member => Boolean(related))
+    .sort(
+      (a, b) =>
+        coupleGenderOrder[a.gender] - coupleGenderOrder[b.gender] ||
+        a.fullName.localeCompare(b.fullName) ||
+        a.id.localeCompare(b.id),
+    );
+  const siblings = getSiblings(member.id, allMembers).filter(
+    (related) => related.id !== member.id,
   );
+  const children = getChildren(member.id, allMembers);
+  const childrenAndSpouses = children.flatMap((child) => [
+    child,
+    ...child.spouseIds
+      .map((id) => getMember(id, allMembers))
+      .filter((related): related is Member => Boolean(related)),
+  ]);
+  const spouses = member.spouseIds
+    .map((id) => getMember(id, allMembers))
+    .filter((related): related is Member => Boolean(related));
+
+  const ordered = [...parents, ...spouses, ...siblings, ...childrenAndSpouses];
+  const seen = new Set<string>();
+  return ordered.filter((related) => {
+    if (related.id === member.id || seen.has(related.id)) return false;
+    seen.add(related.id);
+    return true;
+  });
 }
 
 export function describeRelationship(

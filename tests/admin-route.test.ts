@@ -4,7 +4,10 @@ import test from 'node:test';
 
 import { createApiHandler } from '../server/index.mjs';
 
-async function withServer(callback: (baseUrl: string) => Promise<unknown>) {
+async function withServer(
+  callback: (baseUrl: string) => Promise<unknown>,
+  envOverrides: Record<string, string> = {},
+) {
   const server = createServer(
     createApiHandler({
       database: null,
@@ -13,10 +16,14 @@ async function withServer(callback: (baseUrl: string) => Promise<unknown>) {
         ADMIN_USERNAME: 'admin',
         ADMIN_PASSWORD: 'secret-password',
         ADMIN_SESSION_SECRET: 'test-session-secret',
+        GUEST_PASSWORD: 'family-password',
+        ...envOverrides,
       },
     }),
   );
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+  await new Promise<void>((resolve) =>
+    server.listen(0, '127.0.0.1', () => resolve()),
+  );
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('No test port');
   try {
@@ -64,7 +71,34 @@ void test('protects the admin data endpoint and manages an authenticated session
 
 void test('serves the fictional demo database when no database URL is configured', async () => {
   await withServer(async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/clan`);
+    const locked = await fetch(`${baseUrl}/api/clan`);
+    assert.equal(locked.status, 401);
+
+    const invalidGuestLogin = await fetch(`${baseUrl}/api/guest/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: 'wrong' }),
+    });
+    assert.equal(invalidGuestLogin.status, 401);
+
+    const guestLogin = await fetch(`${baseUrl}/api/guest/login`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-proto': 'https',
+      },
+      body: JSON.stringify({ password: 'family-password' }),
+    });
+    assert.equal(guestLogin.status, 200);
+    const guestCookie = guestLogin.headers.get('set-cookie');
+    assert.match(guestCookie ?? '', /clan_guest_session=/);
+    assert.match(guestCookie ?? '', /HttpOnly/i);
+    assert.match(guestCookie ?? '', /SameSite=Lax/i);
+    assert.match(guestCookie ?? '', /Secure/i);
+
+    const response = await fetch(`${baseUrl}/api/clan`, {
+      headers: { cookie: guestCookie?.split(';', 1)[0] ?? '' },
+    });
     assert.equal(response.status, 200);
     const data = await response.json();
     assert.equal(data.members[0].fullName, 'Nguyễn Văn An');
@@ -83,5 +117,47 @@ void test('serves the fictional demo database when no database URL is configured
     });
     assert.equal(adminData.status, 200);
     assert.equal((await adminData.json()).members.length, 10);
+
+    const adminRead = await fetch(`${baseUrl}/api/clan`, {
+      headers: { cookie },
+    });
+    assert.equal(adminRead.status, 200);
+  });
+});
+
+void test('fails closed when guest access is not configured', async () => {
+  await withServer(
+    async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/clan`);
+      assert.equal(response.status, 503);
+      assert.deepEqual(await response.json(), {
+        error: {
+          code: 'GUEST_ACCESS_NOT_CONFIGURED',
+          message: 'The clan service is temporarily unavailable',
+        },
+      });
+    },
+    { GUEST_PASSWORD: '' },
+  );
+});
+
+void test('rate limits repeated guest password failures', async () => {
+  await withServer(async (baseUrl) => {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await fetch(`${baseUrl}/api/guest/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: 'wrong' }),
+      });
+      assert.equal(response.status, 401);
+    }
+
+    const blocked = await fetch(`${baseUrl}/api/guest/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: 'family-password' }),
+    });
+    assert.equal(blocked.status, 429);
+    assert.equal(blocked.headers.get('retry-after'), '900');
   });
 });

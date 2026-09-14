@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { fetchClanData, getClanApiEndpoint } from '../lib/clan-api.ts';
+import {
+  ClanApiError,
+  fetchClanData,
+  getClanApiEndpoint,
+  loginGuest,
+} from '../lib/clan-api.ts';
 import { buildVercelConfig } from '../lib/vercel-config.mjs';
 import { getClanDisplayName } from '../lib/site-config.ts';
 
@@ -49,6 +54,48 @@ void test('rejects API errors instead of substituting sample records', async () 
         async () => new Response('Unavailable', { status: 503 }),
       ),
     /returned 503/i,
+  );
+});
+
+void test('preserves an unauthorized status so the UI can show guest access', async () => {
+  await assert.rejects(
+    () =>
+      fetchClanData('/api/clan', async () =>
+        Response.json(
+          {
+            error: {
+              code: 'GUEST_AUTHENTICATION_REQUIRED',
+              message: 'Guest authentication is required',
+            },
+          },
+          { status: 401 },
+        ),
+      ),
+    (error: unknown) =>
+      error instanceof ClanApiError &&
+      error.status === 401 &&
+      error.code === 'GUEST_AUTHENTICATION_REQUIRED',
+  );
+});
+
+void test('submits only the shared password when unlocking guest access', async () => {
+  const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+  const result = await loginGuest('family-password', (async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => {
+    requests.push({ input, init });
+    return Response.json({ authenticated: true });
+  }) as typeof fetch);
+
+  const request = requests[0];
+  assert.deepEqual(result, { authenticated: true });
+  assert.equal(request?.input, '/api/guest/login');
+  assert.equal(request?.init?.method, 'POST');
+  assert.equal(request?.init?.credentials, 'include');
+  assert.equal(
+    request?.init?.body,
+    JSON.stringify({ password: 'family-password' }),
   );
 });
 

@@ -110,6 +110,111 @@ void test('direct relationships are described from the selected member', () => {
   assert.equal(describeRelationship(members[0], members[1], members), 'Vợ');
 });
 
+void test('orders relatives by parents, siblings, then each child with their spouse', () => {
+  const selected = {
+    ...members[2],
+    id: 'selected',
+    fullName: 'Selected member',
+    parentIds: ['mother', 'father'],
+    spouseIds: ['partner'],
+    siblingOrder: 2,
+  };
+  const father = {
+    ...members[0],
+    id: 'father',
+    fullName: 'Father',
+    gender: 'male' as const,
+    parentIds: [],
+    spouseIds: [],
+  };
+  const mother = {
+    ...members[1],
+    id: 'mother',
+    fullName: 'Mother',
+    gender: 'female' as const,
+    parentIds: [],
+    spouseIds: [],
+  };
+  const olderSibling = {
+    ...members[3],
+    id: 'older-sibling',
+    fullName: 'Older sibling',
+    parentIds: ['father', 'mother'],
+    spouseIds: [],
+    siblingOrder: 1,
+  };
+  const youngerSibling = {
+    ...members[4],
+    id: 'younger-sibling',
+    fullName: 'Younger sibling',
+    parentIds: ['father', 'mother'],
+    spouseIds: [],
+    siblingOrder: 3,
+  };
+  const partner = {
+    ...members[6],
+    id: 'partner',
+    fullName: 'Partner',
+    parentIds: [],
+    spouseIds: ['selected'],
+  };
+  const childA = {
+    ...members[8],
+    id: 'child-a',
+    fullName: 'Child A',
+    parentIds: ['selected'],
+    spouseIds: ['child-a-spouse'],
+    siblingOrder: 1,
+  };
+  const childASpouse = {
+    ...members[6],
+    id: 'child-a-spouse',
+    fullName: 'Child A spouse',
+    parentIds: [],
+    spouseIds: ['child-a'],
+  };
+  const childB = {
+    ...members[9],
+    id: 'child-b',
+    fullName: 'Child B',
+    parentIds: ['selected'],
+    spouseIds: ['child-b-spouse'],
+    siblingOrder: 2,
+  };
+  const childBSpouse = {
+    ...members[6],
+    id: 'child-b-spouse',
+    fullName: 'Child B spouse',
+    parentIds: [],
+    spouseIds: ['child-b'],
+  };
+
+  const related = getRelatives(selected, [
+    childBSpouse,
+    mother,
+    childA,
+    youngerSibling,
+    childASpouse,
+    father,
+    partner,
+    selected,
+    childB,
+    olderSibling,
+  ]);
+
+  assert.deepEqual(related.map((member) => member.id), [
+    'father',
+    'mother',
+    'partner',
+    'older-sibling',
+    'younger-sibling',
+    'child-a',
+    'child-a-spouse',
+    'child-b',
+    'child-b-spouse',
+  ]);
+});
+
 void test('a member is never included in their own relationship list', () => {
   const chi = members.find((member) => member.id === 'chi')!;
   assert.ok(!getRelatives(chi, members).some((member) => member.id === chi.id));
