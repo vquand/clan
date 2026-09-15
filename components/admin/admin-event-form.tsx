@@ -3,6 +3,7 @@
 import type { SubmitEvent } from 'react';
 import { useState } from 'react';
 
+import { CalendarTypeIcon } from '@/components/calendar-type-icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -172,20 +173,43 @@ export function AdminEventForm({
             <option value="death-anniversary">Death anniversary</option>
           </select>
         </div>
-        <div className="admin-field">
-          <label htmlFor="event-calendar">Calendar *</label>
-          <select
-            id="event-calendar"
-            className="admin-select"
-            value={form.calendar}
-            onChange={(eventToChange) =>
-              setField('calendar', eventToChange.target.value as EventFormState['calendar'])
-            }
+        <fieldset className="admin-field admin-calendar-picker">
+          <legend id="event-calendar-label">Calendar *</legend>
+          <div
+            className="admin-calendar-options"
+            role="radiogroup"
+            aria-labelledby="event-calendar-label"
           >
-            <option value="solar">Solar</option>
-            <option value="lunar">Lunar</option>
-          </select>
-        </div>
+            <label
+              className={`admin-calendar-option${form.calendar === 'solar' ? ' admin-calendar-option--selected' : ''}`}
+            >
+              <input
+                type="radio"
+                name="event-calendar"
+                value="solar"
+                checked={form.calendar === 'solar'}
+                onChange={() => setField('calendar', 'solar')}
+                disabled={pending}
+              />
+              <CalendarTypeIcon calendar="solar" aria-hidden="true" />
+              <span>Solar calendar</span>
+            </label>
+            <label
+              className={`admin-calendar-option${form.calendar === 'lunar' ? ' admin-calendar-option--selected' : ''}`}
+            >
+              <input
+                type="radio"
+                name="event-calendar"
+                value="lunar"
+                checked={form.calendar === 'lunar'}
+                onChange={() => setField('calendar', 'lunar')}
+                disabled={pending}
+              />
+              <CalendarTypeIcon calendar="lunar" aria-hidden="true" />
+              <span>Lunar calendar</span>
+            </label>
+          </div>
+        </fieldset>
         <div className="admin-field">
           <label htmlFor="event-day">Day *</label>
           <Input

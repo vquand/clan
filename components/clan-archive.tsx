@@ -12,11 +12,9 @@ import {
   MapPin,
   Pencil,
   Plus,
-  Moon,
   Search,
   ShieldCheck,
   Sprout,
-  Sun,
   TreePine,
   Trash2,
   UserRound,
@@ -26,6 +24,8 @@ import Image from 'next/image';
 import type { PointerEvent as ReactPointerEvent, SubmitEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { CalendarTypeIcon } from '@/components/calendar-type-icon';
+import { ClanEventIcon } from '@/components/clan-event-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -1036,9 +1036,7 @@ function EventDetail({
         <DialogHeader>
           <div className="event-detail__eyebrow">
             <Badge variant="outline">{eventTypeLabel(event, locale)}</Badge>
-            <span aria-hidden="true">
-              {event.calendar === 'lunar' ? '🌙' : '☀️'}
-            </span>
+            <ClanEventIcon event={event} aria-hidden="true" />
           </div>
           <DialogTitle>{event.title}</DialogTitle>
           <DialogDescription>
@@ -1187,11 +1185,11 @@ function CalendarView({
         aria-label={translate(locale, 'calendarLegend')}
       >
         <span>
-          <Sun aria-hidden="true" />
+          <CalendarTypeIcon calendar="solar" aria-hidden="true" />
           <strong>{translate(locale, 'solarDate')}</strong>
         </span>
         <span>
-          <Moon aria-hidden="true" />
+          <CalendarTypeIcon calendar="lunar" aria-hidden="true" />
           <strong className="lunar-chip">
             {translate(locale, 'lunarDateLabel')}
           </strong>
@@ -1252,7 +1250,7 @@ function CalendarView({
                     }}
                   >
                     <span aria-hidden="true">
-                      {event.calendar === 'lunar' ? '🌙' : '☀️'}
+                      <ClanEventIcon event={event} />
                     </span>
                     <span className="day-event__title">{event.title}</span>
                   </button>
@@ -1312,14 +1310,18 @@ function CalendarView({
                   </span>
                 </div>
                 <div>
-                  <Badge variant="outline">
-                    {eventTypeLabel(event, locale)}
-                  </Badge>
+                  <div className="event-card__meta">
+                    <Badge variant="outline">
+                      {eventTypeLabel(event, locale)}
+                    </Badge>
+                    <ClanEventIcon event={event} aria-hidden="true" />
+                  </div>
                   <h4 className="event-card__title" title={event.title}>
                     {event.title}
                   </h4>
                   <p className="event-card__dates">
-                    <Sun aria-hidden="true" /> {formatDate(date, locale)}
+                    <CalendarTypeIcon calendar="solar" aria-hidden="true" />{' '}
+                    {formatDate(date, locale)}
                     <span className="lunar-chip">
                       {formatLunarDate(date, locale)}
                     </span>

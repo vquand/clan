@@ -171,6 +171,27 @@ test('toggles and remembers dark mode', async ({ page }) => {
   await expect(page.locator('html')).not.toHaveClass(/dark/);
 });
 
+test('keeps lunar date text readable in dark mode', async ({ page }) => {
+  await serveSampleData(page);
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'Bật chế độ tối' }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+
+  const colors = await page.locator('.lunar-chip').evaluateAll((chips) => {
+    const foreground = getComputedStyle(document.documentElement)
+      .getPropertyValue('--foreground')
+      .trim();
+    return {
+      foreground,
+      chipColors: chips.map((chip) => getComputedStyle(chip).color),
+    };
+  });
+
+  expect(colors.chipColors.length).toBeGreaterThan(0);
+  expect(new Set(colors.chipColors)).toEqual(new Set([colors.foreground]));
+});
+
 test('member search, profile, tree, and calendar work without browser errors', async ({
   page,
 }, testInfo) => {
@@ -375,7 +396,16 @@ test('calendar explains both calendars and opens event details', async ({
   await page.goto('/');
   await expect(page.locator('.calendar-legend')).toContainText('Dương lịch');
   await expect(page.locator('.calendar-legend')).toContainText('Âm lịch');
+  await expect(
+    page.locator('[data-calendar-icon="solar"]').first(),
+  ).toBeVisible();
+  await expect(
+    page.locator('[data-calendar-icon="lunar"]').first(),
+  ).toBeVisible();
   await expect(page.locator('.calendar-day .lunar-chip').first()).toBeVisible();
+  await expect(
+    page.locator('.day-event [data-calendar-icon="lunar"]').first(),
+  ).toBeVisible();
   await expect(
     page.locator('.calendar-day--today .moon-phase-banner'),
   ).toBeVisible();
@@ -391,10 +421,33 @@ test('calendar explains both calendars and opens event details', async ({
   await expect(eventDialog).toContainText('Họp họ đầu hè');
   await expect(eventDialog).toContainText('Dương lịch');
   await expect(eventDialog).toContainText('Âm lịch');
+  await expect(
+    eventDialog.locator('[data-calendar-icon="solar"]'),
+  ).toBeVisible();
   await expect(eventDialog).toContainText('123 Family Road');
   await expect(
     eventDialog.getByRole('link', { name: /Mở trên Google Maps/ }),
   ).toHaveAttribute('href', 'https://maps.google.com/?q=family');
+});
+
+test('uses themed icons for common lunar events', async ({ page }) => {
+  await serveSampleData(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Xem tất cả ngày' }).click();
+
+  for (const icon of [
+    'tet',
+    'nguyen-tieu',
+    'han-thuc',
+    'doan-ngo',
+    'vu-lan',
+    'trung-thu',
+    'tao-quan',
+  ]) {
+    await expect(
+      page.locator(`[data-event-icon="${icon}"]`).first(),
+    ).toBeVisible();
+  }
 });
 
 test('truncates long event names inside calendar cards', async ({ page }) => {
@@ -610,6 +663,7 @@ test('admin can edit members and manage events and locations from the main tabs'
     events: [],
     locations: [],
   };
+  let createdCalendar = '';
 
   await page.route('**/api/clan', async (route) => {
     await route.fulfill({ json: data });
@@ -635,6 +689,7 @@ test('admin can edit members and manage events and locations from the main tabs'
   });
   await page.route('**/api/admin/events', async (route) => {
     const body = route.request().postDataJSON() as Record<string, unknown>;
+    createdCalendar = typeof body.calendar === 'string' ? body.calendar : '';
     const event = {
       ...body,
       id: 'main-event-1',
@@ -761,11 +816,31 @@ test('admin can edit members and manage events and locations from the main tabs'
 
   await page.getByRole('tab', { name: 'Lịch họ' }).click();
   await page.getByRole('button', { name: 'Thêm sự kiện' }).click();
+  const solarCalendar = page.getByRole('radio', { name: 'Solar calendar' });
+  const lunarCalendar = page.getByRole('radio', { name: 'Lunar calendar' });
+  const solarCalendarOption = page
+    .locator('label.admin-calendar-option')
+    .filter({ hasText: 'Solar calendar' });
+  const lunarCalendarOption = page
+    .locator('label.admin-calendar-option')
+    .filter({ hasText: 'Lunar calendar' });
+  await expect(solarCalendar).toBeVisible();
+  await expect(lunarCalendar).toBeVisible();
+  await expect(solarCalendarOption.locator('svg')).toBeVisible();
+  await expect(lunarCalendarOption.locator('svg')).toBeVisible();
+  await expect(solarCalendar).toBeChecked();
+  await lunarCalendarOption.click();
+  await expect(lunarCalendar).toBeChecked();
+  await expect(solarCalendar).not.toBeChecked();
   await page.getByLabel('Title *').fill('Ngày họp mặt mới');
   await page.getByLabel('Day *').fill('14');
   await page.getByLabel('Month *').fill('9');
+  await page.getByLabel('Verified solar dates').fill('2026=2026-10-23');
   await page.getByRole('button', { name: 'Add event' }).click();
+  await expect.poll(() => createdCalendar).toBe('lunar');
   await expect(page.getByRole('dialog')).toBeHidden();
+  const showAllDates = page.getByRole('button', { name: 'Xem tất cả ngày' });
+  if (await showAllDates.isVisible()) await showAllDates.click();
   await expect(page.locator('.event-list')).toContainText('Ngày họp mặt mới');
 
   await page.getByRole('tab', { name: 'Địa điểm' }).click();

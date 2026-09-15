@@ -103,7 +103,7 @@ void test('serves the fictional demo database when no database URL is configured
     const data = await response.json();
     assert.equal(data.members[0].fullName, 'Nguyễn Văn An');
     assert.equal(data.members.length, 10);
-    assert.equal(data.events.length, 3);
+    assert.equal(data.events.length, 9);
     assert.equal(data.locations.length, 2);
 
     const login = await fetch(`${baseUrl}/api/admin/login`, {

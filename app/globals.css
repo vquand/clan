@@ -131,6 +131,15 @@
   background: color-mix(in oklch, var(--muted) 70%, var(--background));
 }
 
+.dark .lunar-chip {
+  color: var(--foreground);
+}
+
+.dark .event-card__meta .event-icon,
+.dark .event-detail__eyebrow > .event-icon {
+  color: var(--foreground);
+}
+
 .dark .day-event {
   color: var(--foreground);
   background: oklch(0.31 0.055 68);
@@ -1111,14 +1120,18 @@
   width: min(4rem, 64%);
   aspect-ratio: 1;
   overflow: hidden;
-  border: 1px solid color-mix(in oklch, var(--primary) 28%, transparent);
+  border: 1px solid color-mix(in oklch, var(--primary) 68%, transparent);
   border-radius: 50%;
   background: radial-gradient(
     circle at 35% 30%,
-    oklch(0.29 0.025 65),
-    oklch(0.16 0.025 45) 72%
+    oklch(0.14 0.018 45),
+    oklch(0.035 0.008 35) 72%
   );
-  box-shadow: 0 0.25rem 0.8rem oklch(0.2 0.04 35 / 0.18);
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--primary) 24%, transparent),
+    0 0 0.65rem color-mix(in oklch, var(--primary) 34%, transparent),
+    inset 0 0 0.3rem color-mix(in oklch, var(--primary) 18%, transparent),
+    0 0.25rem 0.8rem oklch(0.2 0.04 35 / 0.18);
 }
 .moon-phase-banner__orb::before {
   position: absolute;
@@ -1229,6 +1242,16 @@
 .day-event > span:first-child {
   flex: 0 0 auto;
 }
+.event-icon {
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+}
+.day-event > span:first-child .event-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
 .day-event__title {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1309,6 +1332,15 @@
 .event-card-admin .event-card {
   padding-top: 0;
   border-top: 0;
+}
+.event-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+.event-card__meta .event-icon {
+  color: var(--primary);
 }
 .event-card-admin__actions {
   justify-content: flex-end;
@@ -1465,6 +1497,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+.event-detail__eyebrow > .event-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  color: var(--primary);
 }
 .event-detail__dates {
   display: grid;
@@ -1690,10 +1727,72 @@
   gap: 0.35rem;
   min-width: 0;
 }
-.admin-field label {
+.admin-field label,
+.admin-field legend {
   color: var(--foreground);
   font-size: 0.78rem;
   font-weight: 700;
+}
+.admin-calendar-picker {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.admin-calendar-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.admin-calendar-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 2.5rem;
+  gap: 0.45rem;
+  padding: 0.5rem 0.65rem;
+  color: var(--foreground);
+  background: var(--card);
+  border: 1px solid var(--input);
+  border-radius: 0.55rem;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.admin-calendar-option:hover {
+  border-color: var(--ring);
+}
+.admin-calendar-option--selected {
+  color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 10%, var(--card));
+  border-color: var(--primary);
+}
+.admin-calendar-option:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px oklch(0.49 0.13 28 / 0.18);
+}
+.admin-calendar-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.admin-calendar-option svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+}
+.admin-calendar-option:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 .admin-field small {
   color: var(--muted-foreground);

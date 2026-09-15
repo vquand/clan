@@ -59,13 +59,28 @@ void test('uses the exact birth date when siblings share a birth year', () => {
 void test('complete sibling orders override birth dates for the tree', () => {
   const reorderedMembers = members.map((member) => {
     if (member.id === 'binh') {
-      return { ...member, birthYear: undefined, birthDate: undefined, siblingOrder: 3 };
+      return {
+        ...member,
+        birthYear: undefined,
+        birthDate: undefined,
+        siblingOrder: 3,
+      };
     }
     if (member.id === 'chi') {
-      return { ...member, birthYear: undefined, birthDate: undefined, siblingOrder: 1 };
+      return {
+        ...member,
+        birthYear: undefined,
+        birthDate: undefined,
+        siblingOrder: 1,
+      };
     }
     if (member.id === 'dung') {
-      return { ...member, birthYear: undefined, birthDate: undefined, siblingOrder: 2 };
+      return {
+        ...member,
+        birthYear: undefined,
+        birthDate: undefined,
+        siblingOrder: 2,
+      };
     }
     return member;
   });
@@ -202,17 +217,20 @@ void test('orders relatives by parents, siblings, then each child with their spo
     olderSibling,
   ]);
 
-  assert.deepEqual(related.map((member) => member.id), [
-    'father',
-    'mother',
-    'partner',
-    'older-sibling',
-    'younger-sibling',
-    'child-a',
-    'child-a-spouse',
-    'child-b',
-    'child-b-spouse',
-  ]);
+  assert.deepEqual(
+    related.map((member) => member.id),
+    [
+      'father',
+      'mother',
+      'partner',
+      'older-sibling',
+      'younger-sibling',
+      'child-a',
+      'child-a-spouse',
+      'child-b',
+      'child-b-spouse',
+    ],
+  );
 });
 
 void test('a member is never included in their own relationship list', () => {
@@ -222,6 +240,28 @@ void test('a member is never included in their own relationship list', () => {
 
 void test('fixed annual events resolve into the requested year', () => {
   assert.equal(getEventDate(clanEvents[1], 2027), '2027-04-18');
+});
+
+void test('common lunar observances resolve from their lunar dates', () => {
+  const expected = {
+    'tet-nguyen-dan': ['2027-02-06', 1, 1],
+    'tet-nguyen-tieu': ['2027-02-20', 1, 15],
+    'han-thuc': ['2027-04-09', 3, 3],
+    'doan-ngo': ['2027-06-09', 5, 5],
+    'vu-lan': ['2027-08-16', 7, 15],
+    'trung-thu': ['2027-09-15', 8, 15],
+    'ong-cong-ong-tao': ['2028-01-19', 12, 23],
+  } as const;
+
+  for (const [id, [solarDate, month, day]] of Object.entries(expected)) {
+    const event = clanEvents.find((candidate) => candidate.id === id);
+    assert.ok(event, `Expected default event ${id}`);
+    assert.equal(event.calendar, 'lunar');
+    assert.equal(event.recurrence, 'annual');
+    assert.equal(event.month, month);
+    assert.equal(event.day, day);
+    assert.equal(getEventDate(event, 2027), solarDate);
+  }
 });
 
 void test('calendar dates convert between solar and Vietnamese lunar dates', () => {
