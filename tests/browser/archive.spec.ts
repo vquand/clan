@@ -542,6 +542,109 @@ test('filters the event list when a calendar day is selected', async ({
   await expect(page.locator('.event-list .event-card')).toHaveCount(2);
 });
 
+test('scrolls a long event list without stretching empty calendar weeks', async ({
+  page,
+}) => {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const overflowMonth = ((now.getMonth() + 1) % 12) + 1;
+  const overflowEvents = Array.from({ length: 24 }, (_, index) => ({
+    id: `overflow-event-${index}`,
+    title: `Sự kiện dài ${index + 1}`,
+    type: 'gathering' as const,
+    calendar: 'solar' as const,
+    day: (index % 24) + 1,
+    month: overflowMonth,
+    recurrence: 'annual' as const,
+    relatedMemberIds: [],
+    location: '',
+  }));
+  const crowdedEvents = Array.from({ length: 6 }, (_, index) => ({
+    id: `crowded-event-${index}`,
+    title: `Sự kiện cùng ngày ${index + 1}`,
+    type: 'gathering' as const,
+    calendar: 'solar' as const,
+    day: now.getDate(),
+    month: currentMonth,
+    recurrence: 'annual' as const,
+    relatedMemberIds: [],
+    location: '',
+  }));
+  const events = [...overflowEvents, ...crowdedEvents];
+
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({ json: { members, events } });
+  });
+  await page.route('**/api/admin/session', async (route) => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Xem tất cả ngày' }).click();
+  await expect(page.locator('.event-list .event-card')).toHaveCount(
+    events.length,
+  );
+
+  const dimensions = await page
+    .locator('.calendar-layout')
+    .evaluate((layout) => {
+      const grid = layout.querySelector('.calendar-grid');
+      const eventList = layout.querySelector('.event-list');
+      const days = [...layout.querySelectorAll('.calendar-day')];
+
+      if (
+        !(grid instanceof HTMLElement) ||
+        !(eventList instanceof HTMLElement)
+      ) {
+        throw new Error('Expected calendar grid and event list elements');
+      }
+
+      const crowdedDay = days.find(
+        (day) => day.querySelectorAll('.day-event').length === 6,
+      );
+      const crowdedDayTop = crowdedDay?.getBoundingClientRect().top;
+      const quietDay = days.find(
+        (day) =>
+          !day.classList.contains('calendar-day--muted') &&
+          day.querySelectorAll('.day-event').length === 0 &&
+          crowdedDayTop !== undefined &&
+          Math.abs(day.getBoundingClientRect().top - crowdedDayTop) > 1,
+      );
+
+      if (
+        !(crowdedDay instanceof HTMLElement) ||
+        !(quietDay instanceof HTMLElement)
+      ) {
+        throw new Error('Expected crowded and quiet calendar days');
+      }
+
+      return {
+        calendarHeight: grid.getBoundingClientRect().height,
+        crowdedDayHeight: crowdedDay.getBoundingClientRect().height,
+        eventListClientHeight: eventList.clientHeight,
+        eventListMaxHeight: Number.parseFloat(
+          getComputedStyle(eventList).maxHeight,
+        ),
+        eventListScrollHeight: eventList.scrollHeight,
+        eventListOverflowY: getComputedStyle(eventList).overflowY,
+        quietDayHeight: quietDay.getBoundingClientRect().height,
+      };
+    });
+
+  expect(dimensions.eventListOverflowY).toBe('auto');
+  expect(
+    Math.abs(dimensions.eventListMaxHeight - dimensions.calendarHeight),
+  ).toBeLessThanOrEqual(1);
+  expect(dimensions.eventListScrollHeight).toBeGreaterThan(
+    dimensions.eventListClientHeight,
+  );
+  expect(dimensions.crowdedDayHeight).toBeGreaterThan(
+    dimensions.quietDayHeight,
+  );
+  expect(dimensions.quietDayHeight).toBeLessThan(220);
+});
+
 test('opens the configured clan record while data is loading', async ({
   page,
 }, testInfo) => {

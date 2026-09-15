@@ -21,7 +21,11 @@ import {
   Users,
 } from 'lucide-react';
 import Image from 'next/image';
-import type { PointerEvent as ReactPointerEvent, SubmitEvent } from 'react';
+import type {
+  CSSProperties,
+  PointerEvent as ReactPointerEvent,
+  SubmitEvent,
+} from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { CalendarTypeIcon } from '@/components/calendar-type-icon';
@@ -1111,6 +1115,8 @@ function CalendarView({
     event: ClanEvent;
     date: string;
   } | null>(null);
+  const calendarGridRef = useRef<HTMLDivElement>(null);
+  const [calendarHeight, setCalendarHeight] = useState<number | null>(null);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       const now = new Date();
@@ -1119,6 +1125,22 @@ function CalendarView({
     });
     return () => cancelAnimationFrame(frame);
   }, []);
+  useEffect(() => {
+    const calendarGrid = calendarGridRef.current;
+    if (!calendarGrid || typeof ResizeObserver === 'undefined') return;
+
+    const updateCalendarHeight = () => {
+      const nextHeight = Math.ceil(calendarGrid.getBoundingClientRect().height);
+      setCalendarHeight((current) =>
+        current === nextHeight ? current : nextHeight,
+      );
+    };
+
+    updateCalendarHeight();
+    const observer = new ResizeObserver(updateCalendarHeight);
+    observer.observe(calendarGrid);
+    return () => observer.disconnect();
+  }, [visible.year, visible.month]);
   const days = buildCalendarDays(visible.year, visible.month);
   const datedEvents = events
     .map((event) => ({ event, date: getEventDate(event, visible.year) }))
@@ -1196,7 +1218,11 @@ function CalendarView({
         </span>
       </div>
       <div className="calendar-layout">
-        <div className="calendar-grid" aria-label={monthTitle}>
+        <div
+          ref={calendarGridRef}
+          className="calendar-grid"
+          aria-label={monthTitle}
+        >
           {weekdayLabels[locale].map((day) => (
             <div className="weekday" key={day}>
               {day}
@@ -1262,6 +1288,13 @@ function CalendarView({
         <aside
           className="event-list"
           aria-label={translate(locale, 'importantDatesLabel')}
+          style={
+            calendarHeight === null
+              ? undefined
+              : ({
+                  '--calendar-height': `${calendarHeight}px`,
+                } as CSSProperties)
+          }
         >
           <div className="event-list__heading">
             <div className="event-list__heading-copy">
