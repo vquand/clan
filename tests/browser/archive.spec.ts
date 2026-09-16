@@ -13,6 +13,80 @@ async function serveSampleData(page: Page) {
   });
 }
 
+test('shows life status text only when it carries useful information', async ({
+  page,
+}) => {
+  const statusMembers: AdminData['members'] = [
+    {
+      id: 'living-person',
+      fullName: 'Living Person',
+      gender: 'female',
+      clanRelation: 'lineage',
+      generation: 0,
+      status: 'living',
+      parentIds: [],
+      spouseIds: [],
+    },
+    {
+      id: 'unknown-person',
+      fullName: 'Unknown Person',
+      gender: 'female',
+      clanRelation: 'lineage',
+      generation: 0,
+      status: 'unknown',
+      parentIds: [],
+      spouseIds: [],
+    },
+    {
+      id: 'deceased-person',
+      fullName: 'Deceased Person',
+      gender: 'male',
+      clanRelation: 'lineage',
+      generation: 0,
+      status: 'deceased',
+      ageAtDeath: 80,
+      ageAtDeathQualifier: 'exact',
+      parentIds: [],
+      spouseIds: [],
+    },
+  ];
+
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({ json: { members: statusMembers, events: [] } });
+  });
+  await page.route('**/api/admin/session', async (route) => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Thành viên' }).click();
+
+  await page
+    .getByRole('button', { name: /Living Person/ })
+    .first()
+    .click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.locator('.detail-status')).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Close' }).click();
+
+  await page
+    .getByRole('button', { name: /Unknown Person/ })
+    .first()
+    .click();
+  await expect(page.getByRole('dialog').locator('.detail-status')).toHaveText(
+    'Mất liên lạc/Không có thông tin cụ thể',
+  );
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+
+  await page
+    .getByRole('button', { name: /Deceased Person/ })
+    .first()
+    .click();
+  await expect(page.getByRole('dialog').locator('.detail-status')).toHaveText(
+    'Hưởng dương 80 tuổi',
+  );
+});
+
 test('unlocks the archive with one shared family password', async ({
   page,
 }) => {

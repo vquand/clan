@@ -77,6 +77,7 @@ import {
 } from '@/lib/i18n';
 import {
   formatMemberAge,
+  formatMemberStatus,
   getMemberAvatarSource,
   getMemberAvatarVariant,
 } from '@/lib/member-display';
@@ -1544,6 +1545,7 @@ function MemberDetail({
   if (!member) return null;
   const related = getRelatives(member, members);
   const isEditing = admin?.editing ?? false;
+  const statusMessage = formatMemberStatus(member, locale);
   return (
     <Sheet open={Boolean(member)} onOpenChange={onOpenChange}>
       <SheetContent className="member-sheet">
@@ -1606,26 +1608,19 @@ function MemberDetail({
           </div>
         ) : (
           <div className="member-sheet__content">
-            <div className="detail-status">
-              <Badge
-                variant={member.status === 'living' ? 'secondary' : 'outline'}
-              >
-                {translate(
-                  locale,
-                  member.status === 'deceased'
-                    ? 'deceased'
-                    : member.status === 'living'
-                      ? 'living'
-                      : 'unknown',
+            {(statusMessage || member.residence) && (
+              <div className="detail-status">
+                {statusMessage && (
+                  <Badge variant="outline">{statusMessage}</Badge>
                 )}
-              </Badge>
-              {member.residence && (
-                <span>
-                  <MapPin aria-hidden="true" />
-                  {member.residence}
-                </span>
-              )}
-            </div>
+                {member.residence && (
+                  <span>
+                    <MapPin aria-hidden="true" />
+                    {member.residence}
+                  </span>
+                )}
+              </div>
+            )}
             <dl className="detail-list">
               <div>
                 <dt>{translate(locale, 'age')}</dt>

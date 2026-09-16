@@ -8,7 +8,7 @@ export interface AdminMemberInput {
   birthYear?: number | string;
   birthDate?: string;
   siblingOrder?: number | string;
-  status?: 'living' | 'deceased';
+  status?: 'living' | 'deceased' | 'unknown';
   deathYear?: number | string;
   deathDate?: string;
   ageAtDeath?: number | string;

@@ -104,6 +104,18 @@ void test('normalizes a member with editable relationship and avatar fields', ()
   );
 });
 
+void test('preserves an explicitly selected unknown life status', () => {
+  assert.equal(
+    normalizeMemberInput({
+      fullName: 'Unreachable relative',
+      gender: 'female',
+      clanRelation: 'lineage',
+      status: 'unknown',
+    }).life_status,
+    'unknown',
+  );
+});
+
 void test('normalizes a positive sibling order for records with incomplete birth data', () => {
   assert.equal(
     normalizeMemberInput({

@@ -43,7 +43,7 @@ interface MemberFormState {
   birthYear: string;
   birthDate: string;
   siblingOrder: string;
-  status: '' | 'living' | 'deceased';
+  status: '' | 'living' | 'deceased' | 'unknown';
   deathYear: string;
   deathDate: string;
   ageAtDeath: string;
@@ -347,7 +347,8 @@ export function AdminMemberForm({
               setField('status', event.target.value as MemberFormState['status'])
             }
           >
-            <option value="">Unknown</option>
+            <option value="">Not set</option>
+            <option value="unknown">Unknown</option>
             <option value="living">Living</option>
             <option value="deceased">Deceased</option>
           </select>

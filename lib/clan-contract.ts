@@ -60,7 +60,7 @@ export function isMember(value: unknown): value is Member {
       typeof value.isPreviousClanHead === 'boolean') &&
     (value.status === undefined ||
       (typeof value.status === 'string' &&
-        ['living', 'deceased'].includes(value.status))) &&
+        ['living', 'deceased', 'unknown'].includes(value.status))) &&
     isStringArray(value.parentIds) &&
     isStringArray(value.spouseIds)
   );

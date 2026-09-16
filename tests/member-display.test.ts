@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   formatMemberAge,
+  formatMemberStatus,
   getMemberAvatarSource,
   getMemberAvatarVariant,
 } from '../lib/member-display.ts';
@@ -17,6 +18,45 @@ const baseMember: Member = {
   parentIds: [],
   spouseIds: [],
 };
+
+void test('does not show a status message for living or unset members', () => {
+  assert.equal(
+    formatMemberStatus({ ...baseMember, status: 'living' }),
+    undefined,
+  );
+  assert.equal(formatMemberStatus(baseMember), undefined);
+});
+
+void test('describes a deceased member using their age at death', () => {
+  assert.equal(
+    formatMemberStatus({
+      ...baseMember,
+      status: 'deceased',
+      ageAtDeath: 80,
+      ageAtDeathQualifier: 'exact',
+    }),
+    'Hưởng dương 80 tuổi',
+  );
+});
+
+void test('calculates the deceased status age when only years are available', () => {
+  assert.equal(
+    formatMemberStatus({
+      ...baseMember,
+      status: 'deceased',
+      birthYear: 1926,
+      deathYear: 1986,
+    }),
+    'Hưởng dương 60 tuổi',
+  );
+});
+
+void test('describes an explicitly unknown member as unavailable information', () => {
+  assert.equal(
+    formatMemberStatus({ ...baseMember, status: 'unknown' }),
+    'Mất liên lạc/Không có thông tin cụ thể',
+  );
+});
 
 void test('wraps a deceased member age in memorial brackets', () => {
   assert.equal(

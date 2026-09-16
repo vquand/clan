@@ -24,6 +24,7 @@ void test('keeps one active baseline and archives the superseded migration chain
   assert.deepEqual(activeMigrations, [
     '001_baseline.sql',
     '002_add_sibling_order.sql',
+    '003_add_explicit_unknown_life_status.sql',
   ]);
   assert.equal(archivedMigrations.length, 15);
 
@@ -49,6 +50,16 @@ void test('keeps one active baseline and archives the superseded migration chain
     'utf8',
   );
   assert.match(siblingOrderMigration, /ADD COLUMN sibling_order SMALLINT/i);
+  const explicitUnknownMigration = await readFile(
+    fileURLToPath(
+      new URL(
+        '../db/migrations/003_add_explicit_unknown_life_status.sql',
+        import.meta.url,
+      ),
+    ),
+    'utf8',
+  );
+  assert.match(explicitUnknownMigration, /unknown/i);
   assert.ok(splitSqlStatements(baseline).length > 20);
 });
 

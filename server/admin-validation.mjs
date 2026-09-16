@@ -1,6 +1,6 @@
 const genders = new Set(['male', 'female', 'other']);
 const clanRelations = new Set(['lineage', 'marriage']);
-const lifeStatuses = new Set(['living', 'deceased']);
+const lifeStatuses = new Set(['living', 'deceased', 'unknown']);
 const ageQualifiers = new Set(['exact', 'approximately', 'under']);
 const ageGroups = new Set(['senior']);
 const avatarStyles = new Set(['default', 'style-1', 'style-2', 'style-3']);

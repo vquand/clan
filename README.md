@@ -102,7 +102,7 @@ numbered migration files under `db/migrations/`.
 
 The root JSON object contains `members` and `events` arrays. The complete fictional example is in [`examples/clan-data.example.json`](examples/clan-data.example.json).
 
-Required member fields (birth year and life status are optional when unknown):
+Required member fields (birth year and life status are optional when not recorded):
 
 ```json
 {
@@ -112,11 +112,15 @@ Required member fields (birth year and life status are optional when unknown):
   "generation": 1,
   "branch": "Branch name",
   "birthYear": 1950,
-  "status": "living | deceased",
+  "status": "living | deceased | unknown",
   "parentIds": [],
   "spouseIds": []
 }
 ```
+
+Omit `status` when the life status has not been entered. Use `unknown` only
+when an administrator explicitly records that the family has no current
+contact or specific information.
 
 Optional member fields include `familiarName`, `birthDate`, `siblingOrder`, `deathYear`, `deathDate`, `ageAtDeath`, `ageAtDeathQualifier`, `deathAnniversaryLunar`, `hometown`, `residence`, and `biography`. `siblingOrder` is an oldest-to-youngest rank used when a sibling group has incomplete birth records; the admin reorder control writes the complete group. Updating one member's rank automatically shifts the affected siblings and keeps the group numbered consecutively. Without a complete manual order, the tree uses exact birth date, then birth year. Use `ageAtDeathQualifier` with `exact`, `approximately`, or `under` when the recorded age is qualified. Spouse references must be declared in both member records.
 

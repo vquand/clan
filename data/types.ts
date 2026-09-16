@@ -1,4 +1,4 @@
-export type LifeStatus = 'living' | 'deceased';
+export type LifeStatus = 'living' | 'deceased' | 'unknown';
 export type AgeAtDeathQualifier = 'exact' | 'approximately' | 'under';
 export type ClanRelation = 'lineage' | 'marriage';
 export const MEMBER_AGE_GROUPS = ['senior'] as const;

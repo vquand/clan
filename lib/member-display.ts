@@ -3,6 +3,7 @@ import {
   type Member,
   type MemberAvatarStyle,
 } from '../data/types.ts';
+import { type Locale, translate } from './i18n.ts';
 
 interface DateParts {
   year: number;
@@ -39,24 +40,29 @@ function completedYears(start: DateParts, end: DateParts) {
   return years >= 0 ? years : undefined;
 }
 
-function calculateMemberAge(member: Member, referenceDate: Date) {
-  const birthDate = parseDate(member.birthDate);
-  if (member.status === 'deceased') {
-    const deathDate = parseDate(member.deathDate);
-    if (deathDate) {
-      if (birthDate) return completedYears(birthDate, deathDate);
-      if (member.birthYear !== undefined) {
-        const years = deathDate.year - member.birthYear;
-        return years >= 0 ? years : undefined;
-      }
-    }
+function calculateAgeAtDeath(member: Member) {
+  if (member.ageAtDeath !== undefined) return member.ageAtDeath;
 
-    if (member.birthYear !== undefined && member.deathYear !== undefined) {
-      const years = member.deathYear - member.birthYear;
+  const birthDate = parseDate(member.birthDate);
+  const deathDate = parseDate(member.deathDate);
+  if (deathDate) {
+    if (birthDate) return completedYears(birthDate, deathDate);
+    if (member.birthYear !== undefined) {
+      const years = deathDate.year - member.birthYear;
       return years >= 0 ? years : undefined;
     }
-    return undefined;
   }
+
+  if (member.birthYear !== undefined && member.deathYear !== undefined) {
+    const years = member.deathYear - member.birthYear;
+    return years >= 0 ? years : undefined;
+  }
+  return undefined;
+}
+
+function calculateMemberAge(member: Member, referenceDate: Date) {
+  const birthDate = parseDate(member.birthDate);
+  if (member.status === 'deceased') return calculateAgeAtDeath(member);
 
   const currentDate = getLocalDateParts(referenceDate);
   if (!currentDate) return undefined;
@@ -65,6 +71,24 @@ function calculateMemberAge(member: Member, referenceDate: Date) {
 
   const years = currentDate.year - member.birthYear;
   return years >= 0 ? years : undefined;
+}
+
+export function getMemberAgeAtDeath(member: Member) {
+  return member.status === 'deceased'
+    ? calculateAgeAtDeath(member)
+    : undefined;
+}
+
+export function formatMemberStatus(member: Member, locale: Locale = 'vi') {
+  if (member.status === 'unknown') {
+    return translate(locale, 'unknownStatus');
+  }
+  if (member.status !== 'deceased') return undefined;
+
+  const age = getMemberAgeAtDeath(member);
+  return age === undefined
+    ? translate(locale, 'deceased')
+    : translate(locale, 'deceasedAtAge', { age });
 }
 
 function formatRecordedDeathAge(member: Member) {
