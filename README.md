@@ -163,6 +163,18 @@ The base CSS targets mobile screens first. Layouts expand at `581px` and `821px`
 
 Visitors can choose standard, large, or extra-large text. The setting changes the root type scale so rem-based text and controls grow together, and it is saved under `clan-reading-size` in local storage. No user account or server-side preference storage is involved.
 
+### Install as an app
+
+The production frontend is an installable PWA. It must be served over HTTPS
+(localhost is also supported for testing). On iPhone or iPad, open the archive
+in Safari, tap **Share**, choose **Add to Home Screen**, and enable **Open as
+Web App** when that option is shown. On Android, open the archive in Chrome,
+then choose **Install app** or **Add to Home screen** from the browser menu.
+
+The installed app caches its static shell and branded icons for faster reopen
+and a basic offline fallback. Clan API requests, guest/admin sessions, and all
+data mutations remain network-only and are never cached by the service worker.
+
 ## Deployment
 
 ### Neon
