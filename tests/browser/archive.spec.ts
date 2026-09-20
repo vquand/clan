@@ -223,24 +223,24 @@ test('toggles and remembers dark mode', async ({ page }) => {
   await serveSampleData(page);
   await page.goto('/');
 
-  const darkMode = page.getByRole('button', { name: 'Bật chế độ tối' });
+  const darkMode = page.getByRole('button', { name: 'Tối' });
   await expect(darkMode).toBeVisible();
+  await expect(darkMode).toHaveText('Tối');
   await darkMode.click();
   await expect(page.locator('html')).toHaveClass(/dark/);
-  await expect(
-    page.getByRole('button', { name: 'Bật chế độ sáng' }),
-  ).toBeVisible();
+  const lightMode = page.getByRole('button', { name: 'Sáng' });
+  await expect(lightMode).toBeVisible();
+  await expect(lightMode).toHaveText('Sáng');
   await expect(
     page.evaluate(() => localStorage.getItem('clan-theme')),
   ).resolves.toBe('dark');
 
   await page.reload();
   await expect(page.locator('html')).toHaveClass(/dark/);
-  await page.getByRole('button', { name: 'Bật chế độ sáng' }).click();
+  await page.getByRole('button', { name: 'Sáng' }).click();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
-  await expect(
-    page.getByRole('button', { name: 'Bật chế độ tối' }),
-  ).toBeVisible();
+  await expect(darkMode).toBeVisible();
+  await expect(darkMode).toHaveText('Tối');
   await page.reload();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
 });
@@ -249,7 +249,7 @@ test('keeps lunar date text readable in dark mode', async ({ page }) => {
   await serveSampleData(page);
   await page.goto('/');
 
-  await page.getByRole('button', { name: 'Bật chế độ tối' }).click();
+  await page.getByRole('button', { name: 'Tối' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
 
   const colors = await page.locator('.lunar-chip').evaluateAll((chips) => {
