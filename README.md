@@ -171,9 +171,13 @@ in Safari, tap **Share**, choose **Add to Home Screen**, and enable **Open as
 Web App** when that option is shown. On Android, open the archive in Chrome,
 then choose **Install app** or **Add to Home screen** from the browser menu.
 
-The installed app caches its static shell and branded icons for faster reopen
-and a basic offline fallback. Clan API requests, guest/admin sessions, and all
-data mutations remain network-only and are never cached by the service worker.
+The installed app caches its static shell and branded icons for faster reopen.
+Repeat navigations serve the cached frontend immediately while the latest page
+is refreshed in the background, so deployments become available without making
+the first screen wait for the network. The first visit still needs the network;
+an offline visit uses the cached shell. Clan API requests, guest/admin
+sessions, and all data mutations remain network-only and are never cached by
+the service worker.
 
 ## Deployment
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'clan-archive-shell-v1';
+const CACHE_NAME = 'clan-archive-shell-v2';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -34,29 +34,32 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-async function networkFirstNavigation(request) {
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      await cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    return (await caches.match(request)) || caches.match('/');
-  }
-}
-
-async function cacheFirst(request) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
-
+async function refreshRequest(request) {
   const response = await fetch(request);
   if (response.ok && response.type === 'basic') {
     const cache = await caches.open(CACHE_NAME);
     await cache.put(request, response.clone());
   }
   return response;
+}
+
+async function staleWhileRevalidate(request, event) {
+  const cached = (await caches.match(request)) || (await caches.match('/'));
+  const refresh = refreshRequest(request).catch(() => undefined);
+
+  if (cached) {
+    event.waitUntil(refresh);
+    return cached;
+  }
+
+  return (await refresh) || caches.match('/');
+}
+
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+
+  return refreshRequest(request);
 }
 
 self.addEventListener('fetch', (event) => {
@@ -71,9 +74,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    request.mode === 'navigate'
-      ? networkFirstNavigation(request)
-      : cacheFirst(request),
-  );
+  if (request.mode === 'navigate') {
+    event.respondWith(staleWhileRevalidate(request, event));
+    return;
+  }
+
+  event.respondWith(cacheFirst(request));
 });

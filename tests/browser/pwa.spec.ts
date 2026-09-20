@@ -56,3 +56,34 @@ test('exposes install metadata and registers the app shell service worker', asyn
     .toBe(true);
   expect(pageErrors).toEqual([]);
 });
+
+test('serves the cached app shell when reopened offline', async ({ page }) => {
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({ json: { members: [], events: [] } });
+  });
+  await page.route('**/api/admin/session', async (route) => {
+    await route.fulfill({ json: { authenticated: false } });
+  });
+
+  await page.goto('/');
+
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const registration =
+            await navigator.serviceWorker?.getRegistration('/');
+          if (!registration?.active) return false;
+
+          const cache = await caches.open('clan-archive-shell-v2');
+          return Boolean(await cache.match('/'));
+        }),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  await page.context().setOffline(true);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('body')).toBeVisible();
+  await expect(page).toHaveTitle('Họ Đỗ Văn');
+});

@@ -82,9 +82,12 @@ root manifest and service-worker paths.
   worker, and icon files.
 - Existing unit, lint, build, and archive browser tests must remain green.
 
-The service worker uses cache-first behavior only for same-origin static assets
-and a network-first navigation fallback. API requests and non-GET mutations
-remain network-only, so stale or private clan data is not silently cached.
+The service worker uses cache-first behavior for same-origin static assets and a
+stale-while-revalidate navigation strategy: an existing shell is returned
+immediately while the latest HTML is refreshed in the background. The first
+visit still waits for the network, and an offline visit falls back to the
+cached shell. API requests and non-GET mutations remain network-only, so stale
+or private clan data is not silently cached.
 
 ## Boundaries
 

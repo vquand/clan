@@ -101,3 +101,14 @@ void test('service worker keeps private API and mutation requests network-only',
   ok(serviceWorker.includes('return;'));
   ok(serviceWorker.includes('caches.open(CACHE_NAME)'));
 });
+
+void test('service worker refreshes cached navigations in the background', async () => {
+  const serviceWorker = await readFile(
+    join(projectRoot, 'public/sw.js'),
+    'utf8',
+  );
+
+  ok(serviceWorker.includes('async function staleWhileRevalidate'));
+  ok(serviceWorker.includes('event.waitUntil(refresh)'));
+  ok(!serviceWorker.includes('networkFirstNavigation'));
+});
