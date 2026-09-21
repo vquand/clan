@@ -110,6 +110,16 @@ const vi = {
   footerNote: 'Thông tin lấy từ gia phả gia đình.',
   footerSampleNote:
     'Đây là dữ liệu mẫu. Hãy cấu hình dữ liệu riêng trước khi xuất bản.',
+  notificationTitle: 'Nhắc lịch gia đình',
+  notificationDescription: 'Nhắc các sự kiện trong vòng 3 ngày tới.',
+  notificationEnable: 'Bật nhắc lịch',
+  notificationEnabled: 'Đã bật nhắc lịch',
+  notificationToday: 'Hôm nay có sự kiện: {event}',
+  notificationInDays: '{event} sẽ diễn ra sau {count} ngày',
+  notificationUnsupported: 'Thiết bị này chưa hỗ trợ thông báo.',
+  notificationDenied:
+    'Thông báo đang bị chặn. Hãy bật lại trong cài đặt trình duyệt.',
+  notificationEnableError: 'Chưa thể bật thông báo. Hãy thử lại.',
   relationshipWife: 'Vợ',
   relationshipHusband: 'Chồng',
   relationshipMother: 'Mẹ',
@@ -230,6 +240,16 @@ const en: Record<MessageKey, string> = {
   footerNote: 'From the family archive.',
   footerSampleNote:
     'This is sample data. Add your family records before publishing.',
+  notificationTitle: 'Family event reminder',
+  notificationDescription: 'Get reminders for events happening within 3 days.',
+  notificationEnable: 'Enable event reminders',
+  notificationEnabled: 'Event reminders enabled',
+  notificationToday: "Today's family event: {event}",
+  notificationInDays: '{event} is in {count} days',
+  notificationUnsupported: 'This device does not support notifications.',
+  notificationDenied:
+    'Notifications are blocked. Enable them in browser settings.',
+  notificationEnableError: 'Notifications could not be enabled. Try again.',
   relationshipWife: 'Wife',
   relationshipHusband: 'Husband',
   relationshipMother: 'Mother',
@@ -350,6 +370,18 @@ const fr: Record<MessageKey, string> = {
   footerNote: 'Informations tirées de l’archive familiale.',
   footerSampleNote:
     'Ceci est un exemple. Ajoutez vos données familiales avant de publier.',
+  notificationTitle: 'Rappel de l’agenda familial',
+  notificationDescription:
+    'Recevez un rappel des événements dans les 3 prochains jours.',
+  notificationEnable: 'Activer les rappels',
+  notificationEnabled: 'Rappels activés',
+  notificationToday: 'Événement familial aujourd’hui : {event}',
+  notificationInDays: '{event} dans {count} jours',
+  notificationUnsupported:
+    'Cet appareil ne prend pas en charge les notifications.',
+  notificationDenied:
+    'Les notifications sont bloquées. Activez-les dans les réglages du navigateur.',
+  notificationEnableError: 'Impossible d’activer les notifications. Réessayez.',
   relationshipWife: 'Épouse',
   relationshipHusband: 'Époux',
   relationshipMother: 'Mère',

@@ -30,6 +30,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { CalendarTypeIcon } from '@/components/calendar-type-icon';
 import { ClanEventIcon } from '@/components/clan-event-icon';
+import { EventNotificationSettings } from '@/components/event-notification-settings';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -2097,6 +2098,7 @@ export function ClanArchive({
         <span>
           <Flower2 aria-hidden="true" /> {translate(locale, 'footerBrand')}
         </span>
+        <EventNotificationSettings events={displayedEvents} locale={locale} />
         <p>
           {translate(locale, isSampleData ? 'footerSampleNote' : 'footerNote')}
         </p>
