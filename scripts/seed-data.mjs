@@ -1,3 +1,25 @@
+import defaultLunarEvents from '../data/default-lunar-events.json' with { type: 'json' };
+
+export const DEFAULT_LUNAR_EVENTS = defaultLunarEvents;
+
+function eventSlot(event) {
+  return `${event.calendar}:${event.month}:${event.day}`;
+}
+
+export function mergeDefaultLunarEvents(data) {
+  const existingIds = new Set(data.events.map((event) => event.id));
+  const existingSlots = new Set(data.events.map(eventSlot));
+  const missingDefaults = DEFAULT_LUNAR_EVENTS.filter(
+    (event) =>
+      !existingIds.has(event.id) && !existingSlots.has(eventSlot(event)),
+  );
+
+  return {
+    ...data,
+    events: [...data.events, ...missingDefaults],
+  };
+}
+
 export function normalizeSeedData(data, generateId) {
   const memberIds = new Map();
   const eventIds = new Map();
@@ -100,7 +122,9 @@ export function normalizeSeedData(data, generateId) {
     recurrence: event.recurrence,
     event_year: event.year,
     location: event.location,
-    location_id: event.locationId ? resolveLocationId(event.locationId) : undefined,
+    location_id: event.locationId
+      ? resolveLocationId(event.locationId)
+      : undefined,
     location_address: event.locationAddress,
     location_google_map_url: event.locationGoogleMapUrl,
     description: event.description,

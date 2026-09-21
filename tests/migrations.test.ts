@@ -25,6 +25,7 @@ void test('keeps one active baseline and archives the superseded migration chain
     '001_baseline.sql',
     '002_add_sibling_order.sql',
     '003_add_explicit_unknown_life_status.sql',
+    '004_add_default_lunar_events.sql',
   ]);
   assert.equal(archivedMigrations.length, 15);
 

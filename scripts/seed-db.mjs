@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 import { neon } from '@neondatabase/serverless';
 
-import { normalizeSeedData } from './seed-data.mjs';
+import { mergeDefaultLunarEvents, normalizeSeedData } from './seed-data.mjs';
 
 const databaseUrl = process.env.DATABASE_URL?.trim();
 
@@ -39,7 +39,7 @@ if (
 }
 
 const sql = neon(databaseUrl);
-const normalized = normalizeSeedData(data, randomUUID);
+const normalized = normalizeSeedData(mergeDefaultLunarEvents(data), randomUUID);
 await sql.transaction([
   sql`DELETE FROM events`,
   sql`DELETE FROM clan_locations`,
@@ -124,5 +124,5 @@ await sql.transaction([
 ]);
 
 console.log(
-  `Seeded ${data.members.length} member rows and ${data.events.length} event rows`,
+  `Seeded ${normalized.members.length} member rows and ${normalized.events.length} event rows`,
 );

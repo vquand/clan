@@ -98,6 +98,12 @@ recognizes the already-complete production schema and records the baseline
 without replaying the historical SQL. Future schema changes should use new
 numbered migration files under `db/migrations/`.
 
+Migration `004_add_default_lunar_events.sql` adds the seven standard Vietnamese
+lunar observances to an existing production database when their lunar calendar
+slots are not already occupied. The migration is safe to run once through
+`db:migrate`; the seed command also merges the same defaults into future full
+re-seeds without replacing an existing event in one of those slots.
+
 ### Dataset shape
 
 The root JSON object contains `members` and `events` arrays. The complete fictional example is in [`examples/clan-data.example.json`](examples/clan-data.example.json).
@@ -198,6 +204,9 @@ Render runs `db:migrate` before starting the API and exposes:
 - `GET /health` for the Render health check;
 - `POST /api/guest/login` for password-only guest access;
 - authenticated `GET /api/clan` for the Vercel frontend.
+
+That startup migration activates the standard lunar observances in production;
+their solar dates are calculated for each displayed year by the calendar.
 
 The protected admin API uses:
 

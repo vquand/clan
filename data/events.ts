@@ -1,11 +1,12 @@
 import type { ClanEvent } from './types';
+import defaultLunarEvents from './default-lunar-events.json' with { type: 'json' };
 
 /**
  * `solarDates` is an optional yearly override for lunar dates that the family
  * has checked. When it is absent, the calendar calculates the solar date and
  * prefers the leap-month occurrence when a lunar month repeats.
  */
-export const clanEvents: ClanEvent[] = [
+const familyEvents: ClanEvent[] = [
   {
     id: 'gio-cu-an',
     title: 'Giỗ cụ Nguyễn Văn An',
@@ -50,76 +51,19 @@ export const clanEvents: ClanEvent[] = [
       2027: '2027-09-15',
     },
   },
-  {
-    id: 'tet-nguyen-dan',
-    title: 'Tết Nguyên Đán',
-    type: 'gathering',
-    calendar: 'lunar',
-    day: 1,
-    month: 1,
-    recurrence: 'annual',
-    relatedMemberIds: [],
-    location: '',
-    description: 'Ngày đầu năm mới âm lịch, dịp sum họp lớn của gia đình.',
-  },
-  {
-    id: 'tet-nguyen-tieu',
-    title: 'Tết Nguyên Tiêu',
-    type: 'gathering',
-    calendar: 'lunar',
-    day: 15,
-    month: 1,
-    recurrence: 'annual',
-    relatedMemberIds: [],
-    location: '',
-    description: 'Rằm tháng Giêng, ngày cầu bình an và tưởng nhớ tổ tiên.',
-  },
-  {
-    id: 'han-thuc',
-    title: 'Tết Hàn Thực',
-    type: 'gathering',
-    calendar: 'lunar',
-    day: 3,
-    month: 3,
-    recurrence: 'annual',
-    relatedMemberIds: [],
-    location: '',
-    description: 'Ngày bánh trôi, bánh chay và tưởng nhớ tổ tiên.',
-  },
-  {
-    id: 'doan-ngo',
-    title: 'Tết Đoan Ngọ',
-    type: 'gathering',
-    calendar: 'lunar',
-    day: 5,
-    month: 5,
-    recurrence: 'annual',
-    relatedMemberIds: [],
-    location: '',
-    description: 'Ngày mùng 5 tháng 5 âm lịch.',
-  },
-  {
-    id: 'vu-lan',
-    title: 'Lễ Vu Lan',
-    type: 'gathering',
-    calendar: 'lunar',
-    day: 15,
-    month: 7,
-    recurrence: 'annual',
-    relatedMemberIds: [],
-    location: '',
-    description: 'Dịp tưởng nhớ và tri ân cha mẹ, ông bà.',
-  },
-  {
-    id: 'ong-cong-ong-tao',
-    title: 'Ông Công, Ông Táo',
-    type: 'gathering',
-    calendar: 'lunar',
-    day: 23,
-    month: 12,
-    recurrence: 'annual',
-    relatedMemberIds: [],
-    location: '',
-    description: 'Ngày tiễn ông Công, ông Táo về trời.',
-  },
+];
+
+const sharedDefaultEvents = defaultLunarEvents as ClanEvent[];
+export const clanEvents: ClanEvent[] = [
+  ...familyEvents,
+  ...sharedDefaultEvents.filter(
+    (event) =>
+      !familyEvents.some(
+        (existing) =>
+          existing.id === event.id ||
+          (existing.calendar === event.calendar &&
+            existing.day === event.day &&
+            existing.month === event.month),
+      ),
+  ),
 ];
