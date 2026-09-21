@@ -1721,6 +1721,41 @@
   border-radius: 0.25rem;
   padding: 0.1rem 0.3rem;
 }
+.notification-settings {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.notification-settings__copy {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+.notification-settings__copy > svg {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  color: var(--primary);
+}
+.notification-settings__copy strong {
+  display: block;
+  color: var(--foreground);
+  font-size: 0.8rem;
+}
+.notification-settings__copy p {
+  margin-top: 0.15rem;
+}
+.notification-settings__status {
+  max-width: 26rem;
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+  text-align: right;
+}
 
 .guest-access > .theme-toggle {
   position: absolute;

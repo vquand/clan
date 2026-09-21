@@ -112,3 +112,14 @@ void test('service worker refreshes cached navigations in the background', async
   ok(serviceWorker.includes('event.waitUntil(refresh)'));
   ok(!serviceWorker.includes('networkFirstNavigation'));
 });
+
+void test('service worker opens the archive when a reminder is tapped', async () => {
+  const serviceWorker = await readFile(
+    join(projectRoot, 'public/sw.js'),
+    'utf8',
+  );
+
+  ok(serviceWorker.includes("self.addEventListener('notificationclick'"));
+  ok(serviceWorker.includes("matchAll({ type: 'window'"));
+  ok(serviceWorker.includes('self.clients.openWindow(targetUrl)'));
+});

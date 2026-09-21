@@ -14,6 +14,10 @@ import {
   loginGuest,
 } from '@/lib/clan-api';
 import type { ClanData } from '@/lib/clan-contract';
+import {
+  readCachedClanData,
+  writeCachedClanData,
+} from '@/lib/offline-clan-cache';
 
 type LoadState =
   | { status: 'loading' }
@@ -90,7 +94,10 @@ export function ClanDataLoader({
 
     const controller = new AbortController();
     fetchClanData(endpoint, fetch, controller.signal)
-      .then((data) => setState({ status: 'ready', data, isSample: false }))
+      .then((data) => {
+        writeCachedClanData(data);
+        setState({ status: 'ready', data, isSample: false });
+      })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError')
           return;
@@ -98,6 +105,13 @@ export function ClanDataLoader({
           setState({ status: 'locked' });
           return;
         }
+
+        const cachedData = readCachedClanData();
+        if (cachedData) {
+          setState({ status: 'ready', data: cachedData, isSample: false });
+          return;
+        }
+
         console.error('Unable to load the clan archive from the API', error);
         setState({ status: 'error' });
       });

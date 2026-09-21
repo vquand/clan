@@ -81,3 +81,21 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(cacheFirst(request));
 });
+
+self.addEventListener('notificationclick', (event) => {
+  const targetUrl = event.notification.data?.url || '/#calendar';
+  event.notification.close();
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        const matchingClient = clientList.find((client) =>
+          client.url.startsWith(self.location.origin),
+        );
+        if (matchingClient) {
+          return matchingClient.focus();
+        }
+        return self.clients.openWindow(targetUrl);
+      }),
+  );
+});
