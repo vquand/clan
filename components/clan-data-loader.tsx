@@ -106,7 +106,10 @@ export function ClanDataLoader({
           return;
         }
 
-        const cachedData = readCachedClanData();
+        // Only transport failures permit the offline copy; HTTP and data errors
+        // must not silently show private records after a server-side failure.
+        const cachedData =
+          error instanceof TypeError ? readCachedClanData() : null;
         if (cachedData) {
           setState({ status: 'ready', data: cachedData, isSample: false });
           return;

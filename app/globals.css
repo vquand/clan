@@ -142,18 +142,29 @@
 
 .dark .day-event {
   color: var(--foreground);
-  background: oklch(0.31 0.055 68);
-  border-color: oklch(0.62 0.1 78);
+  background: transparent;
+  border-color: transparent;
 }
 
 .dark .day-event--clan-ceremony {
-  background: oklch(0.31 0.06 84);
-  border-color: oklch(0.65 0.11 82);
+  background: transparent;
 }
 
 .dark .day-event--gathering {
-  background: oklch(0.32 0.07 152);
-  border-color: oklch(0.55 0.11 151);
+  background: transparent;
+}
+
+.dark .day-event__dot {
+  background: oklch(0.72 0.12 78);
+  border-color: oklch(0.86 0.1 82);
+}
+
+.dark .day-event--clan-ceremony .day-event__dot {
+  background: oklch(0.73 0.13 88);
+}
+
+.dark .day-event--gathering .day-event__dot {
+  background: oklch(0.64 0.12 151);
 }
 
 .dark .member-sheet__header {
@@ -442,20 +453,14 @@
   letter-spacing: 0.04em;
 }
 .preference-buttons {
-  display: none;
+  display: grid;
   grid-template-columns: repeat(3, minmax(2.75rem, 1fr));
 }
-.preference-select,
 .preference-buttons button {
   min-height: 2.75rem;
   color: var(--muted-foreground);
   background: var(--card);
   border: 1px solid var(--border);
-}
-.preference-select {
-  width: 100%;
-  padding: 0 0.7rem;
-  border-radius: 0.55rem;
 }
 .preference-buttons button:first-of-type {
   border-radius: 0.55rem 0 0 0.55rem;
@@ -470,7 +475,17 @@
   color: var(--primary-foreground);
   background: var(--primary);
 }
-.preference-select:focus-visible,
+.preference-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding-inline: 0.35rem;
+}
+.language-flag {
+  font-size: 1rem;
+  line-height: 1;
+}
 .preference-buttons button:focus-visible {
   outline: 3px solid oklch(0.65 0.11 49 / 0.45);
   outline-offset: 2px;
@@ -1081,8 +1096,8 @@
 .calendar-grid {
   display: grid;
   overflow: hidden;
-  overflow-x: auto;
-  grid-template-columns: repeat(7, minmax(3rem, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 0;
   background: var(--border);
   gap: 1px;
   border: 1px solid var(--border);
@@ -1174,8 +1189,9 @@
 }
 .calendar-day__select {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
   gap: 0.35rem;
   width: 100%;
   min-width: 0;
@@ -1195,7 +1211,7 @@
 }
 .calendar-day__select > time {
   display: block;
-  padding-right: 0.2rem;
+  padding-right: 0;
 }
 .calendar-day--selected {
   background: color-mix(in oklch, var(--primary) 8%, var(--card));
@@ -1210,38 +1226,32 @@
   outline-offset: -2px;
 }
 .day-event {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  width: 100%;
-  min-height: 1.45rem;
-  overflow: hidden;
-  margin-top: 0.45rem;
-  padding: 0.24rem 0.35rem;
-  color: oklch(0.29 0.08 28);
-  text-align: left;
-  background: oklch(0.9 0.07 70);
-  border: 1px solid oklch(0.72 0.1 65);
-  border-left: 3px solid var(--primary);
-  border-radius: 0.35rem;
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  min-height: 1.5rem;
+  place-items: center;
+  margin: 0.25rem auto 0;
+  padding: 0.25rem;
+  color: var(--primary);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
   cursor: pointer;
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .day-event:hover,
 .day-event:focus-visible {
-  filter: saturate(1.1);
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }
-.day-event > span {
-  min-width: 0;
-}
-.day-event > span:first-child {
-  flex: 0 0 auto;
+.day-event__dot {
+  display: block;
+  width: 0.62rem;
+  height: 0.62rem;
+  background: var(--primary);
+  border: 1px solid color-mix(in oklch, var(--primary) 72%, var(--foreground));
+  border-radius: 50%;
 }
 .event-icon {
   display: block;
@@ -1249,31 +1259,26 @@
   height: 1.1rem;
   flex: 0 0 auto;
 }
-.day-event > span:first-child .event-icon {
-  width: 0.95rem;
-  height: 0.95rem;
-}
-.day-event__title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .day-event--clan-ceremony {
-  background: oklch(0.9 0.08 92);
-  border-color: oklch(0.57 0.12 88);
+  color: oklch(0.57 0.12 88);
 }
 .day-event--gathering {
-  background: oklch(0.91 0.06 152);
-  border-color: oklch(0.52 0.11 151);
+  color: oklch(0.52 0.11 151);
+}
+.day-event--clan-ceremony .day-event__dot {
+  background: oklch(0.57 0.12 88);
+}
+.day-event--gathering .day-event__dot {
+  background: oklch(0.52 0.11 151);
 }
 .event-list {
   position: relative;
   box-sizing: border-box;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
   display: grid;
   min-height: 0;
-  max-height: var(--calendar-height, calc(100dvh - 12rem));
+  max-height: none;
   scrollbar-gutter: stable;
   grid-template-columns: 1fr;
   gap: 0.75rem;
@@ -1398,10 +1403,30 @@
   width: 0.8rem;
 }
 .event-card__dates {
-  flex-wrap: wrap;
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
 }
-.event-card__dates .lunar-chip {
-  margin-left: 0.2rem;
+.event-card__date {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.25rem 0.4rem;
+}
+.event-card__date .event-icon {
+  width: 0.9rem;
+  color: var(--primary);
+}
+.event-card__date .eyebrow {
+  margin: 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+}
+.event-card__date strong {
+  min-width: 0;
+  font-family: Georgia, serif;
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 .event-card small {
   display: block;
@@ -1415,6 +1440,38 @@
   background: var(--muted);
   border-radius: 0.7rem;
   font-size: 0.85rem;
+}
+.calendar-expand {
+  justify-self: center;
+  min-width: 10rem;
+}
+.calendar-expand svg {
+  width: 1rem;
+}
+.event-list__selected-dates {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.5rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+.event-list__selected-date {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+}
+.event-list__selected-date > svg {
+  width: 1.1rem;
+  color: var(--primary);
+}
+.event-list__selected-date .eyebrow {
+  margin: 0;
+}
+.event-list__selected-date strong {
+  min-width: 0;
+  font-family: Georgia, serif;
+  font-size: 1.1rem;
 }
 .locations-heading > div:last-child {
   display: grid;
@@ -2310,9 +2367,6 @@
   .preference-buttons {
     display: grid;
   }
-  .preference-select {
-    display: none;
-  }
   .language-control,
   .reading-control {
     min-width: 10rem;
@@ -2344,16 +2398,23 @@
     min-height: 116px;
     padding: 0.6rem;
   }
+  .calendar-day__select {
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-direction: row;
+  }
+  .calendar-day__select > time {
+    padding-right: 0.2rem;
+  }
   .day-event {
-    width: 100%;
-    min-width: 0;
-    height: auto;
-    padding: 0.35rem 0.45rem;
-    color: oklch(0.29 0.08 28);
-    border-left: 3px solid var(--primary);
-    border-radius: 0.35rem;
+    width: 1.5rem;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0.25rem;
   }
   .event-list {
+    overflow-y: auto;
+    max-height: var(--calendar-height, calc(100dvh - 12rem));
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .locations-grid {

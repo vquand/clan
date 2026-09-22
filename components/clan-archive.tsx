@@ -4,7 +4,9 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   ExternalLink,
   Flower2,
   LogOut,
@@ -56,6 +58,7 @@ import { AdminMemberForm } from '@/components/admin/admin-member-form';
 import { AdminSiblingOrder } from '@/components/admin/admin-sibling-order';
 import { ThemeToggle } from '@/components/theme-toggle';
 import type { ClanEvent, ClanLocation, Member } from '@/data/types';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   buildCalendarDays,
   describeRelationship,
@@ -1111,13 +1114,16 @@ function CalendarView({
     onDelete: (event: ClanEvent) => void;
   };
 }) {
+  const isMobile = useIsMobile(581);
   const [visible, setVisible] = useState({ year: 2026, month: 8 });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isCalendarExpanded, setIsCalendarExpanded] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<{
     event: ClanEvent;
     date: string;
   } | null>(null);
   const calendarGridRef = useRef<HTMLDivElement>(null);
+  const eventListRef = useRef<HTMLElement>(null);
   const [calendarHeight, setCalendarHeight] = useState<number | null>(null);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -1142,8 +1148,22 @@ function CalendarView({
     const observer = new ResizeObserver(updateCalendarHeight);
     observer.observe(calendarGrid);
     return () => observer.disconnect();
-  }, [visible.year, visible.month]);
-  const days = buildCalendarDays(visible.year, visible.month);
+  }, [isCalendarExpanded, isMobile, selectedDate, visible.month, visible.year]);
+  const days = useMemo(
+    () => buildCalendarDays(visible.year, visible.month),
+    [visible.month, visible.year],
+  );
+  const compactDays = useMemo(() => {
+    if (!selectedDate) return days.slice(0, 7);
+    const selectedIndex = days.findIndex(
+      ({ date }) => toIsoDate(date) === selectedDate,
+    );
+    if (selectedIndex < 0) return days.slice(0, 7);
+    const weekStart = Math.floor(selectedIndex / 7) * 7;
+    return days.slice(weekStart, weekStart + 7);
+  }, [days, selectedDate]);
+  const displayedCalendarDays =
+    isMobile && !isCalendarExpanded ? compactDays : days;
   const datedEvents = events
     .map((event) => ({ event, date: getEventDate(event, visible.year) }))
     .filter((item): item is { event: ClanEvent; date: string } =>
@@ -1153,22 +1173,95 @@ function CalendarView({
     ? datedEvents.filter((item) => item.date === selectedDate)
     : datedEvents;
   function moveMonth(offset: number) {
-    setSelectedDate(null);
-    setVisible((current) => {
-      const date = new Date(current.year, current.month + offset, 1);
-      return { year: date.getFullYear(), month: date.getMonth() };
-    });
+    const date = new Date(visible.year, visible.month + offset, 1);
+    setVisible({ year: date.getFullYear(), month: date.getMonth() });
+    setSelectedDate(toIsoDate(date));
   }
   function selectToday() {
     const now = new Date();
     setVisible({ year: now.getFullYear(), month: now.getMonth() });
     setSelectedDate(toIsoDate(now));
   }
+  function selectDate(iso: string, scrollToEvents = false) {
+    setSelectedDate(iso);
+    if (!scrollToEvents) return;
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        eventListRef.current?.scrollIntoView({
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+            .matches
+            ? 'auto'
+            : 'smooth',
+          block: 'start',
+        });
+      });
+    });
+  }
   const todayIso = toIsoDate(new Date());
   const monthTitle = new Intl.DateTimeFormat(getIntlLocale(locale), {
     month: 'long',
     year: 'numeric',
   }).format(new Date(visible.year, visible.month, 1));
+  const renderCalendarGrid = (calendarDays: typeof days) => (
+    <div
+      ref={calendarGridRef}
+      className="calendar-grid"
+      aria-label={monthTitle}
+    >
+      {weekdayLabels[locale].map((day) => (
+        <div className="weekday" key={day}>
+          {day}
+        </div>
+      ))}
+      {calendarDays.map(({ date, inMonth }) => {
+        const iso = toIsoDate(date);
+        const isToday = iso === todayIso;
+        const dayEvents = datedEvents.filter((item) => item.date === iso);
+        return (
+          <div
+            className={`${inMonth ? 'calendar-day' : 'calendar-day calendar-day--muted'}${
+              isToday ? ' calendar-day--today' : ''
+            }${selectedDate === iso ? ' calendar-day--selected' : ''}`}
+            data-date={iso}
+            key={iso}
+          >
+            <MoonPhaseBanner date={iso} />
+            <button
+              type="button"
+              className="calendar-day__select"
+              aria-label={`${formatDate(iso, locale)} · ${formatLunarDate(iso, locale)}`}
+              aria-pressed={selectedDate === iso}
+              onClick={() => selectDate(iso, true)}
+            >
+              <time dateTime={iso}>{date.getDate()}</time>
+              <span
+                className="lunar-chip"
+                aria-label={formatLunarDate(iso, locale)}
+              >
+                {(() => {
+                  const lunar = getLunarDate(date);
+                  return `${lunar.day}/${lunar.month}${lunar.isLeapMonth ? '*' : ''}`;
+                })()}
+              </span>
+            </button>
+            {dayEvents.map(({ event }) => (
+              <button
+                type="button"
+                className={`day-event day-event--${event.type}`}
+                key={event.id}
+                title={event.title}
+                aria-label={`${event.title}, ${formatDate(iso, locale)}`}
+                onClick={() => selectDate(iso, true)}
+              >
+                <span className="day-event__dot" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
   return (
     <section className="view-panel" aria-labelledby="calendar-heading">
       <div className="section-heading calendar-heading">
@@ -1220,74 +1313,29 @@ function CalendarView({
         </span>
       </div>
       <div className="calendar-layout">
-        <div
-          ref={calendarGridRef}
-          className="calendar-grid"
-          aria-label={monthTitle}
-        >
-          {weekdayLabels[locale].map((day) => (
-            <div className="weekday" key={day}>
-              {day}
-            </div>
-          ))}
-          {days.map(({ date, inMonth }) => {
-            const iso = [
-              date.getFullYear(),
-              String(date.getMonth() + 1).padStart(2, '0'),
-              String(date.getDate()).padStart(2, '0'),
-            ].join('-');
-            const isToday = iso === todayIso;
-            const dayEvents = datedEvents.filter((item) => item.date === iso);
-            const selectDate = () =>
-              setSelectedDate((current) => (current === iso ? null : iso));
-            return (
-              <div
-                className={`${inMonth ? 'calendar-day' : 'calendar-day calendar-day--muted'}${
-                  isToday ? ' calendar-day--today' : ''
-                }${selectedDate === iso ? ' calendar-day--selected' : ''}`}
-                key={iso}
-              >
-                <MoonPhaseBanner date={iso} />
-                <button
-                  type="button"
-                  className="calendar-day__select"
-                  aria-label={`${formatDate(iso, locale)} · ${formatLunarDate(iso, locale)}`}
-                  aria-pressed={selectedDate === iso}
-                  onClick={selectDate}
-                >
-                  <time dateTime={iso}>{date.getDate()}</time>
-                  <span
-                    className="lunar-chip"
-                    aria-label={formatLunarDate(iso, locale)}
-                  >
-                    {(() => {
-                      const lunar = getLunarDate(date);
-                      return `${lunar.day}/${lunar.month}${lunar.isLeapMonth ? '*' : ''}`;
-                    })()}
-                  </span>
-                </button>
-                {dayEvents.map(({ event }) => (
-                  <button
-                    type="button"
-                    className={`day-event day-event--${event.type}`}
-                    key={event.id}
-                    title={event.title}
-                    onClick={(eventToClick) => {
-                      eventToClick.stopPropagation();
-                      setSelectedEvent({ event, date: iso });
-                    }}
-                  >
-                    <span aria-hidden="true">
-                      <ClanEventIcon event={event} />
-                    </span>
-                    <span className="day-event__title">{event.title}</span>
-                  </button>
-                ))}
-              </div>
-            );
-          })}
-        </div>
+        {renderCalendarGrid(displayedCalendarDays)}
+        {isMobile && (
+          <Button
+            className="calendar-expand"
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-expanded={isCalendarExpanded}
+            onClick={() => setIsCalendarExpanded((expanded) => !expanded)}
+          >
+            {isCalendarExpanded ? (
+              <ChevronUp aria-hidden="true" />
+            ) : (
+              <ChevronDown aria-hidden="true" />
+            )}
+            {translate(
+              locale,
+              isCalendarExpanded ? 'collapseCalendar' : 'expandCalendar',
+            )}
+          </Button>
+        )}
         <aside
+          ref={eventListRef}
           className="event-list"
           aria-label={translate(locale, 'importantDatesLabel')}
           style={
@@ -1328,6 +1376,24 @@ function CalendarView({
               </Button>
             )}
           </div>
+          {selectedDate && (
+            <div className="event-list__selected-dates">
+              <div className="event-list__selected-date">
+                <CalendarTypeIcon calendar="solar" aria-hidden="true" />
+                <span className="eyebrow">
+                  {translate(locale, 'solarDate')}
+                </span>
+                <strong>{formatDate(selectedDate, locale)}</strong>
+              </div>
+              <div className="event-list__selected-date">
+                <CalendarTypeIcon calendar="lunar" aria-hidden="true" />
+                <span className="eyebrow">
+                  {translate(locale, 'lunarDateLabel')}
+                </span>
+                <strong>{formatLunarDate(selectedDate, locale)}</strong>
+              </div>
+            </div>
+          )}
           {displayedEvents.map(({ event, date }) => (
             <div className="event-card-admin" key={event.id}>
               <button
@@ -1354,13 +1420,22 @@ function CalendarView({
                   <h4 className="event-card__title" title={event.title}>
                     {event.title}
                   </h4>
-                  <p className="event-card__dates">
-                    <CalendarTypeIcon calendar="solar" aria-hidden="true" />{' '}
-                    {formatDate(date, locale)}
-                    <span className="lunar-chip">
-                      {formatLunarDate(date, locale)}
-                    </span>
-                  </p>
+                  <div className="event-card__dates">
+                    <div className="event-card__date">
+                      <CalendarTypeIcon calendar="solar" aria-hidden="true" />
+                      <span className="eyebrow">
+                        {translate(locale, 'solarDate')}
+                      </span>
+                      <strong>{formatDate(date, locale)}</strong>
+                    </div>
+                    <div className="event-card__date event-card__date--lunar">
+                      <CalendarTypeIcon calendar="lunar" aria-hidden="true" />
+                      <span className="eyebrow">
+                        {translate(locale, 'lunarDateLabel')}
+                      </span>
+                      <strong>{formatLunarDate(date, locale)}</strong>
+                    </div>
+                  </div>
                   {event.location && (
                     <p>
                       <MapPin aria-hidden="true" /> {event.location}
@@ -1935,16 +2010,6 @@ export function ClanArchive({
               <legend className="control-label">
                 {translate(locale, 'languageLabel')}
               </legend>
-              <select
-                className="preference-select"
-                aria-label={translate(locale, 'languageLabel')}
-                value={locale}
-                onChange={(event) => setLocale(event.target.value as Locale)}
-              >
-                <option value="vi">Tiếng Việt</option>
-                <option value="en">English</option>
-                <option value="fr">Français</option>
-              </select>
               <div className="preference-buttons">
                 {LOCALES.map((value) => (
                   <button
@@ -1960,7 +2025,10 @@ export function ClanArchive({
                     aria-pressed={locale === value}
                     onClick={() => setLocale(value)}
                   >
-                    {value.toUpperCase()}
+                    <span className="language-flag" aria-hidden="true">
+                      {value === 'vi' ? '🇻🇳' : value === 'en' ? '🇬🇧' : '🇫🇷'}
+                    </span>
+                    <span>{value.toUpperCase()}</span>
                   </button>
                 ))}
               </div>
@@ -1969,24 +2037,6 @@ export function ClanArchive({
               <legend className="control-label">
                 {translate(locale, 'readingSizeLabel')}
               </legend>
-              <select
-                className="preference-select"
-                aria-label={translate(locale, 'readingSizeLabel')}
-                value={readingSize}
-                onChange={(event) =>
-                  setReadingSize(event.target.value as ReadingSize)
-                }
-              >
-                <option value="standard">
-                  {translate(locale, 'readingStandard')}
-                </option>
-                <option value="large">
-                  {translate(locale, 'readingLarge')}
-                </option>
-                <option value="extra-large">
-                  {translate(locale, 'readingExtraLarge')}
-                </option>
-              </select>
               <div className="preference-buttons">
                 {(
                   [

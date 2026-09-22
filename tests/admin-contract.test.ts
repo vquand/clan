@@ -5,6 +5,7 @@ import {
   GUEST_SESSION_TTL_SECONDS,
   createSessionToken,
   getGuestConfig,
+  parseCookies,
   verifySessionToken,
 } from '../server/admin-auth.mjs';
 import {
@@ -46,6 +47,13 @@ void test('keeps a guest session valid for thirty days', () => {
   assert.equal(
     verifySessionToken(token, 'test-secret', 1_000 + 60 * 60 * 24 * 31),
     null,
+  );
+});
+
+void test('ignores malformed cookie values without hiding valid sessions', () => {
+  assert.deepEqual(
+    parseCookies('broken=%E0%A4%A; clan_guest_session=valid%2Etoken'),
+    { clan_guest_session: 'valid.token' },
   );
 });
 

@@ -84,7 +84,13 @@ export function parseCookies(header = '') {
       .split(';')
       .map((part) => part.trim().split('='))
       .filter(([name, value]) => name && value)
-      .map(([name, ...value]) => [name, decodeURIComponent(value.join('='))]),
+      .flatMap(([name, ...value]) => {
+        try {
+          return [[name, decodeURIComponent(value.join('='))]];
+        } catch {
+          return [];
+        }
+      }),
   );
 }
 

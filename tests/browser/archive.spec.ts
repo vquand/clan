@@ -391,7 +391,7 @@ test('member search, profile, tree, and calendar work without browser errors', a
     /calendar-day--selected/,
   );
   await page.getByRole('button', { name: 'Tháng sau' }).click();
-  await expect(page.locator('.calendar-day--selected')).toHaveCount(0);
+  await expect(page.locator('.calendar-day--selected')).toHaveCount(1);
   await page.getByRole('button', { name: 'Hôm nay' }).click();
   await expect(page.locator('.calendar-day--today')).toHaveClass(
     /calendar-day--selected/,
@@ -477,9 +477,7 @@ test('calendar explains both calendars and opens event details', async ({
     page.locator('[data-calendar-icon="lunar"]').first(),
   ).toBeVisible();
   await expect(page.locator('.calendar-day .lunar-chip').first()).toBeVisible();
-  await expect(
-    page.locator('.day-event [data-calendar-icon="lunar"]').first(),
-  ).toBeVisible();
+  await expect(page.locator('.day-event').first()).toBeVisible();
   await expect(
     page.locator('.calendar-day--today .moon-phase-banner'),
   ).toBeVisible();
@@ -524,7 +522,9 @@ test('uses themed icons for common lunar events', async ({ page }) => {
   }
 });
 
-test('truncates long event names inside calendar cards', async ({ page }) => {
+test('renders each calendar event as an accessible dot marker', async ({
+  page,
+}) => {
   const now = new Date();
   const longTitle =
     'Ngày hội đại gia đình với tên sự kiện rất dài cần được thu gọn trong ô lịch';
@@ -550,16 +550,10 @@ test('truncates long event names inside calendar cards', async ({ page }) => {
   });
 
   await page.goto('/');
-  const title = page
-    .locator('.day-event__title')
-    .filter({ hasText: longTitle });
-  await expect(title).toBeVisible();
-  await expect(title).toHaveCSS('text-overflow', 'ellipsis');
-  const dimensions = await title.evaluate((element) => ({
-    clientWidth: element.clientWidth,
-    scrollWidth: element.scrollWidth,
-  }));
-  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
+  const marker = page.locator('.day-event').first();
+  await expect(marker).toHaveAttribute('aria-label', new RegExp(longTitle));
+  await expect(marker.locator('.day-event__title')).toHaveCount(0);
+  await expect(marker.locator('.day-event__dot')).toBeVisible();
 });
 
 test('filters the event list when a calendar day is selected', async ({
@@ -601,9 +595,16 @@ test('filters the event list when a calendar day is selected', async ({
   });
 
   await page.goto('/');
-  const firstDay = page
-    .locator('.calendar-day')
-    .filter({ hasText: eventForFirstDay });
+  await expect(page.locator('.calendar-day--today')).toHaveClass(
+    /calendar-day--selected/,
+  );
+  const expandCalendar = page.getByRole('button', { name: 'Mở rộng lịch' });
+  if (await expandCalendar.count()) await expandCalendar.click();
+  const firstDay = page.locator(
+    `.calendar-day[data-date="${now.getFullYear()}-${String(
+      now.getMonth() + 1,
+    ).padStart(2, '0')}-01"]`,
+  );
   await firstDay.locator('.calendar-day__select').click();
   await expect(page.locator('.calendar-day--selected')).toHaveCount(1);
   await expect(page.locator('.event-list .event-card')).toHaveCount(1);
@@ -614,6 +615,78 @@ test('filters the event list when a calendar day is selected', async ({
 
   await page.getByRole('button', { name: 'Xem tất cả ngày' }).click();
   await expect(page.locator('.event-list .event-card')).toHaveCount(2);
+});
+
+test('uses a compact mobile week and scrolls event dots to the day list', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'Mobile-only calendar layout');
+
+  const now = new Date();
+  const eventTitle = 'Sự kiện được chọn từ chấm lịch';
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({
+      json: {
+        members,
+        events: [
+          {
+            id: 'mobile-dot-event',
+            title: eventTitle,
+            type: 'gathering',
+            calendar: 'solar',
+            day: now.getDate(),
+            month: now.getMonth() + 1,
+            recurrence: 'annual',
+            relatedMemberIds: [],
+            location: '',
+          },
+        ],
+      },
+    });
+  });
+
+  await page.goto('/');
+  await expect(page.locator('.calendar-grid .calendar-day')).toHaveCount(7);
+  await expect(
+    page.getByRole('button', { name: 'Mở rộng lịch' }),
+  ).toBeVisible();
+  await expect(page.locator('.day-event')).toHaveCount(1);
+  await expect(page.locator('.day-event__dot')).toBeVisible();
+
+  await page.locator('.day-event').click();
+  await expect(page.locator('.event-list')).toContainText(eventTitle);
+  await expect(
+    page.locator('.event-list__selected-dates .event-list__selected-date'),
+  ).toHaveCount(2);
+  await expect(page.locator('.event-list .event-card__date')).toHaveCount(2);
+  await expect(
+    page.locator('.event-list .event-card__date').nth(0),
+  ).toContainText('Dương lịch');
+  await expect(
+    page.locator('.event-list .event-card__date').nth(1),
+  ).toContainText('Âm lịch');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Mở rộng lịch' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Thu gọn lịch' }),
+  ).toBeVisible();
+  await expect
+    .poll(() => page.locator('.calendar-grid .calendar-day').count())
+    .toBeGreaterThan(7);
+});
+
+test('keeps the full calendar on tablet-sized screens', async ({ page }) => {
+  await serveSampleData(page);
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.goto('/');
+
+  await expect
+    .poll(() => page.locator('.calendar-grid .calendar-day').count())
+    .toBeGreaterThan(7);
+  await expect(page.getByRole('button', { name: 'Mở rộng lịch' })).toHaveCount(
+    0,
+  );
 });
 
 test('scrolls a long event list without stretching empty calendar weeks', async ({
@@ -1300,23 +1373,27 @@ test('language switching works and the reading size persists locally', async ({
   await expect(page.locator('html')).toHaveAttribute('data-app-ready', 'true');
   await expect(page.locator('html')).toHaveAttribute('lang', 'vi');
 
-  if (testInfo.project.name === 'mobile') {
-    const languageSelect = page.getByRole('combobox', { name: 'Ngôn ngữ' });
-    const readingSizeSelect = page.getByRole('combobox', { name: 'Cỡ chữ' });
-    await expect(languageSelect).toBeVisible();
-    await expect(readingSizeSelect).toBeVisible();
-    await expect(page.locator('.language-control button').first()).toBeHidden();
-    await expect(page.locator('.reading-control button').first()).toBeHidden();
-    await languageSelect.selectOption('en');
-    await page
-      .getByRole('combobox', { name: 'Text size' })
-      .selectOption('extra-large');
-  } else {
-    const english = page.getByRole('button', { name: 'English' });
-    await english.click();
-    await expect(english).toHaveAttribute('aria-pressed', 'true');
-    await page.getByRole('button', { name: 'Extra large text' }).click();
-  }
+  await expect(
+    page.locator('.language-control .preference-buttons'),
+  ).toBeVisible();
+  await expect(
+    page.locator('.language-control .preference-buttons button'),
+  ).toHaveCount(3);
+  await expect(page.locator('.language-control .language-flag')).toHaveCount(3);
+  await expect(
+    page.locator('.language-control .preference-select'),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('.reading-control .preference-buttons'),
+  ).toBeVisible();
+  await expect(
+    page.locator('.reading-control .preference-buttons button'),
+  ).toHaveCount(3);
+
+  const english = page.getByRole('button', { name: 'English' });
+  await english.click();
+  await expect(english).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Extra large text' }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('tab', { name: 'Family tree' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute(
@@ -1333,11 +1410,7 @@ test('language switching works and the reading size persists locally', async ({
     fullPage: true,
   });
 
-  if (testInfo.project.name === 'mobile') {
-    await page.getByRole('combobox', { name: 'Language' }).selectOption('fr');
-  } else {
-    await page.getByRole('button', { name: 'Français' }).click();
-  }
+  await page.getByRole('button', { name: 'Français' }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
   await expect(page.getByRole('tab', { name: 'Calendrier' })).toBeVisible();
 
@@ -1470,4 +1543,37 @@ test('shows a retryable error instead of mock members when the API fails', async
   await expect(
     page.getByRole('heading', { name: '10 thành viên · 3 thế hệ' }),
   ).toBeVisible();
+});
+
+test('does not display cached private data after an API error', async ({
+  page,
+}) => {
+  await serveSampleData(page);
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Thành viên' }).click();
+  await expect(page.locator('.member-card').first()).toBeVisible();
+
+  await page.route('**/api/clan', async (route) => {
+    await route.fulfill({ status: 503, body: 'Unavailable' });
+  });
+  await page.reload();
+
+  await expect(
+    page.getByRole('alert').getByText('Chưa tải được gia phả'),
+  ).toBeVisible();
+  await expect(page.locator('.member-card')).toHaveCount(0);
+});
+
+test('uses cached data when the network is unavailable', async ({ page }) => {
+  await serveSampleData(page);
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Thành viên' }).click();
+  await expect(page.locator('.member-card').first()).toBeVisible();
+
+  await page.route('**/api/clan', async (route) => {
+    await route.abort('internetdisconnected');
+  });
+  await page.reload();
+  await page.getByRole('tab', { name: 'Thành viên' }).click();
+  await expect(page.locator('.member-card').first()).toBeVisible();
 });
