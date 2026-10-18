@@ -169,17 +169,81 @@ export function describeRelationship(
     : translate(locale, 'relationshipRelative');
 }
 
+export interface CalendarEvent extends ClanEvent {
+  /** Automatic anniversaries are edited through the member, not event CRUD. */
+  anniversaryMemberId?: string;
+}
+
+export function getCalendarEvents(
+  allMembers: Member[],
+  events: ClanEvent[],
+  locale: Locale = 'vi',
+): CalendarEvent[] {
+  const anniversaries: CalendarEvent[] = [];
+  for (const member of allMembers) {
+    const anniversary = member.deathAnniversaryLunar;
+    if (
+      member.status === 'living' ||
+      !anniversary ||
+      !Number.isInteger(anniversary.day) ||
+      !Number.isInteger(anniversary.month) ||
+      anniversary.day < 1 ||
+      anniversary.day > 30 ||
+      anniversary.month < 1 ||
+      anniversary.month > 12
+    )
+      continue;
+    const alreadyScheduled = events.some(
+      (event) =>
+        event.type === 'death-anniversary' &&
+        event.calendar === 'lunar' &&
+        event.recurrence === 'annual' &&
+        event.day === anniversary.day &&
+        event.month === anniversary.month &&
+        event.relatedMemberIds.includes(member.id),
+    );
+    if (alreadyScheduled) continue;
+    anniversaries.push({
+      id: `member-death-anniversary:${member.id}`,
+      title: translate(locale, 'deathAnniversaryTitle', {
+        name: member.fullName,
+      }),
+      type: 'death-anniversary',
+      calendar: 'lunar',
+      day: anniversary.day,
+      month: anniversary.month,
+      recurrence: 'annual',
+      relatedMemberIds: [member.id],
+      location: '',
+      anniversaryMemberId: member.id,
+    });
+  }
+  return [...events, ...anniversaries];
+}
+
 export function getEventDate(event: ClanEvent, year: number) {
   if (event.recurrence === 'once' && event.year !== year) return null;
   if (event.calendar === 'lunar') {
     return (
       event.solarDates?.[year] ??
-      getSolarDateFromLunar({ year, month: event.month, day: event.day })
+      getSolarDateFromLunar({ year, month: event.month, day: event.day }) ??
+      (event.type === 'death-anniversary' && event.day === 30
+        ? getSolarDateFromLunar({ year, month: event.month, day: 29 })
+        : null)
     );
   }
   const month = String(event.month).padStart(2, '0');
   const day = String(event.day).padStart(2, '0');
   return `${event.year ?? year}-${month}-${day}`;
+}
+
+/** Resolve lunar-year occurrences into the Gregorian year shown by the UI. */
+export function getEventDatesForYear(event: ClanEvent, year: number) {
+  const years = event.calendar === 'lunar' ? [year - 1, year] : [year];
+  const dates = years
+    .map((candidateYear) => getEventDate(event, candidateYear))
+    .filter((date): date is string => Boolean(date?.startsWith(`${year}-`)));
+  return [...new Set(dates)].sort();
 }
 
 export const moonPhases = [

@@ -1,5 +1,5 @@
 import type { ClanEvent } from '../data/types.ts';
-import { getEventDate } from './clan.ts';
+import { getEventDatesForYear } from './clan.ts';
 import { type Locale, translate } from './i18n.ts';
 import { getBrowserStorage, type StringStorage } from './local-storage.ts';
 
@@ -143,17 +143,18 @@ export function syncUpcomingEventReminders(
 
   for (const event of events) {
     for (const year of [startYear, startYear + 1]) {
-      const date = getEventDate(event, year);
-      if (!date || date < start || date > end) continue;
+      for (const date of getEventDatesForYear(event, year)) {
+        if (date < start || date > end) continue;
 
-      const occurrenceKey = `${event.id}:${date}`;
-      entries.set(occurrenceKey, {
-        occurrenceKey,
-        eventId: event.id,
-        title: event.title,
-        date,
-        calendar: event.calendar,
-      });
+        const occurrenceKey = `${event.id}:${date}`;
+        entries.set(occurrenceKey, {
+          occurrenceKey,
+          eventId: event.id,
+          title: event.title,
+          date,
+          calendar: event.calendar,
+        });
+      }
     }
   }
 
