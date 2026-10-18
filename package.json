@@ -26,6 +26,7 @@
     "cmdk": "1.1.1",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.2",
+    "fast-glob": "file:compat/fast-glob",
     "input-otp": "1.4.2",
     "lucide-react": "1.31.0",
     "react": "19.2.8",
@@ -47,12 +48,15 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.34",
-    "oxfmt": "0.61.0",
+    "oxfmt": "0.73.0",
     "oxlint": "1.76.0",
     "oxlint-tsgolint": "7.0.2001",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vite": "8.3.0"
+  },
+  "overrides": {
+    "fast-glob": "$fast-glob"
   },
   "type": "module"
 }

@@ -96,6 +96,7 @@ const vi = {
   noVerifiedEvents:
     'Chưa có ngày dương đối chiếu cho các sự kiện âm lịch trong năm nay.',
   deathAnniversary: 'Ngày giỗ',
+  deathAnniversaryTitle: 'Giỗ {name}',
   clanCeremony: 'Lễ họ',
   gathering: 'Họp mặt',
   familiarName: 'Tên thường gọi: {name}',
@@ -228,6 +229,7 @@ const en: Record<MessageKey, string> = {
   lunarVerified: 'Lunar {day}/{month} · solar date checked',
   noVerifiedEvents: 'No checked solar date yet for lunar events this year.',
   deathAnniversary: 'Death anniversary',
+  deathAnniversaryTitle: 'Death anniversary of {name}',
   clanCeremony: 'Family ceremony',
   gathering: 'Gathering',
   familiarName: 'Also known as: {name}',
@@ -360,6 +362,7 @@ const fr: Record<MessageKey, string> = {
   noVerifiedEvents:
     'Aucune date solaire vérifiée pour les événements lunaires cette année.',
   deathAnniversary: 'Anniversaire de décès',
+  deathAnniversaryTitle: 'Anniversaire de décès de {name}',
   clanCeremony: 'Cérémonie familiale',
   gathering: 'Réunion',
   familiarName: 'Aussi appelé·e : {name}',

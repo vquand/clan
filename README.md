@@ -9,7 +9,7 @@ The repository contains only fictional sample records. Production data lives in 
 - searchable member directory with sibling filtering for administrators;
 - member profiles with names, birth details, residence, relationships, life status, and lunar death anniversaries;
 - recursive family-tree view with horizontal navigation on small screens;
-- solar and manually verified lunar event calendar;
+- solar and lunar event calendar, with automatic annual death anniversaries from member profiles;
 - Vietnamese (`vi`) by default, plus English (`en`) and French (`fr`);
 - three reading sizes, persisted in the visitor's local storage;
 - mobile-first layout with touch-friendly controls;
@@ -130,6 +130,20 @@ contact or specific information.
 
 Optional member fields include `familiarName`, `birthDate`, `siblingOrder`, `deathYear`, `deathDate`, `ageAtDeath`, `ageAtDeathQualifier`, `deathAnniversaryLunar`, `hometown`, `residence`, and `biography`. `siblingOrder` is an oldest-to-youngest rank used when a sibling group has incomplete birth records; the admin reorder control writes the complete group. Updating one member's rank automatically shifts the affected siblings and keeps the group numbered consecutively. Without a complete manual order, the tree uses exact birth date, then birth year. Use `ageAtDeathQualifier` with `exact`, `approximately`, or `under` when the recorded age is qualified. Spouse references must be declared in both member records.
 
+Saving a member's `deathAnniversaryLunar` automatically adds an annual lunar
+death anniversary to the calendar and event reminders. No separate event record
+or yearly setup is needed. Editing or clearing the member's anniversary updates
+the automatic event; explicitly living members are excluded. Admins edit these
+dates through the member profile. An existing annual lunar death-anniversary
+event linked to the same member on the same lunar date is used instead, retaining
+its location and any checked solar dates. Other events on that date still appear.
+
+Lunar dates use the Vietnamese calendar (UTC+7) and the existing preference for
+the leap-month occurrence when a month repeats. A day-30 death anniversary falls
+on day 29 when that lunar month has only 29 days. The calendar and reminders
+include late lunar months in the correct Gregorian year, including tháng Chạp
+anniversaries in January or February.
+
 Required event fields:
 
 ```json
@@ -146,7 +160,8 @@ Required event fields:
 }
 ```
 
-For a lunar event, manually verify and provide its solar date for each supported year:
+Lunar event solar dates are calculated automatically. Optional `solarDates`
+override the calculation for a lunar year when the family has checked a date:
 
 ```json
 {
@@ -233,7 +248,7 @@ DATABASE_URL="postgresql://..." CLAN_DATA_FILE="/private/path/clan-data.json" np
 
 [`vercel.mjs`](vercel.mjs) selects the `Other` framework preset, runs `npm ci` and `npm run build`, publishes `dist/client`, and proxies `/api/*` to Render. The browser therefore uses a same-origin `/api/clan` request and does not depend on CORS for normal frontend traffic. Connect the repository to Vercel with `main` as the Production Branch. Every push to `main` creates a production deployment.
 
-Set `API_URL` in Vercel's **Production** environment to the Render service origin, for example `https://clan-api.onrender.com`. Set it in **Preview** as well if previews should use the backend. `NEXT_PUBLIC_API_URL` remains accepted while migrating existing projects, but the URL no longer needs to be exposed to browser code. Redeploy after changing environment variables; Vercel applies them to new deployments.
+Set `API_URL` in Vercel's **Production** and **Preview** environments to the Render service origin, for example `https://clan-api.onrender.com`. The deployment configuration requires this value before it can compile, including for branch previews. `NEXT_PUBLIC_API_URL` remains accepted while migrating existing projects, but the URL no longer needs to be exposed to browser code. Redeploy after changing environment variables; Vercel applies them to new deployments.
 
 Set `CLAN_DISPLAY_NAME` in the Vercel frontend build environment to the family name, for example `Đỗ Văn`. The public browser tab, archive header, and loading screen then use `Họ Đỗ Văn`. This value must be configured on the frontend build; a backend-only `.env` value cannot change a static Vercel page.
 

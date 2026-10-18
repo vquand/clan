@@ -63,13 +63,15 @@ import {
   buildCalendarDays,
   describeRelationship,
   getChildren,
-  getEventDate,
+  getCalendarEvents,
+  getEventDatesForYear,
   getMember,
   getLunarDate,
   getMoonPhase,
   getRelatives,
   getSiblings,
   orderCoupleMembers,
+  type CalendarEvent,
 } from '@/lib/clan';
 import {
   DEFAULT_LOCALE,
@@ -1105,12 +1107,12 @@ function CalendarView({
   locale,
   admin,
 }: {
-  events: ClanEvent[];
+  events: CalendarEvent[];
   locale: Locale;
   admin?: {
     pending: boolean;
     onAdd: () => void;
-    onEdit: (event: ClanEvent) => void;
+    onEdit: (event: CalendarEvent) => void;
     onDelete: (event: ClanEvent) => void;
   };
 }) {
@@ -1164,11 +1166,9 @@ function CalendarView({
   }, [days, selectedDate]);
   const displayedCalendarDays =
     isMobile && !isCalendarExpanded ? compactDays : days;
-  const datedEvents = events
-    .map((event) => ({ event, date: getEventDate(event, visible.year) }))
-    .filter((item): item is { event: ClanEvent; date: string } =>
-      Boolean(item.date),
-    );
+  const datedEvents = events.flatMap((event) =>
+    getEventDatesForYear(event, visible.year).map((date) => ({ event, date })),
+  );
   const displayedEvents = selectedDate
     ? datedEvents.filter((item) => item.date === selectedDate)
     : datedEvents;
@@ -1395,7 +1395,7 @@ function CalendarView({
             </div>
           )}
           {displayedEvents.map(({ event, date }) => (
-            <div className="event-card-admin" key={event.id}>
+            <div className="event-card-admin" key={`${event.id}:${date}`}>
               <button
                 className="event-card"
                 type="button"
@@ -1466,18 +1466,25 @@ function CalendarView({
                     }}
                   >
                     <Pencil aria-hidden="true" />
-                    {translate(locale, 'adminEditEvent')}
+                    {translate(
+                      locale,
+                      event.anniversaryMemberId
+                        ? 'adminEditMember'
+                        : 'adminEditEvent',
+                    )}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    disabled={admin.pending}
-                    onClick={() => admin.onDelete(event)}
-                  >
-                    <Trash2 aria-hidden="true" />
-                    {translate(locale, 'adminDeleteEvent')}
-                  </Button>
+                  {!event.anniversaryMemberId && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      disabled={admin.pending}
+                      onClick={() => admin.onDelete(event)}
+                    >
+                      <Trash2 aria-hidden="true" />
+                      {translate(locale, 'adminDeleteEvent')}
+                    </Button>
+                  )}
                 </fieldset>
               )}
             </div>
@@ -1806,7 +1813,11 @@ export function ClanArchive({
   );
   const isAdmin = adminStatus === 'authenticated' && Boolean(adminData);
   const displayedMembers = isAdmin ? (adminData?.members ?? members) : members;
-  const displayedEvents = isAdmin ? (adminData?.events ?? events) : events;
+  const savedEvents = isAdmin ? (adminData?.events ?? events) : events;
+  const displayedEvents = useMemo(
+    () => getCalendarEvents(displayedMembers, savedEvents, locale),
+    [displayedMembers, savedEvents, locale],
+  );
   const displayedLocations = isAdmin ? (adminData?.locations ?? []) : locations;
   const visibleTabs = isAdmin ? tabs : tabs.slice(0, 3);
 
@@ -2124,7 +2135,17 @@ export function ClanArchive({
                 ? {
                     pending: adminPending,
                     onAdd: () => openEventEditor(),
-                    onEdit: openEventEditor,
+                    onEdit: (event) => {
+                      if (event.anniversaryMemberId) {
+                        const member = getMember(
+                          event.anniversaryMemberId,
+                          displayedMembers,
+                        );
+                        if (member) openMemberEditor(member);
+                      } else {
+                        openEventEditor(event);
+                      }
+                    },
                     onDelete: (event) => void removeEvent(event),
                   }
                 : undefined

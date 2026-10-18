@@ -450,6 +450,7 @@ test('shows current and previous clan head markers on member avatars', async ({
 test('calendar explains both calendars and opens event details', async ({
   page,
 }) => {
+  await page.clock.install({ time: new Date('2026-09-22T12:00:00+07:00') });
   await page.route('**/api/clan', async (route) => {
     await route.fulfill({
       json: {
@@ -614,7 +615,8 @@ test('filters the event list when a calendar day is selected', async ({
   );
 
   await page.getByRole('button', { name: 'Xem tất cả ngày' }).click();
-  await expect(page.locator('.event-list .event-card')).toHaveCount(2);
+  await expect(page.locator('.event-list .event-card')).toHaveCount(3);
+  await expect(page.locator('.event-list')).toContainText('Giỗ Nguyễn Văn An');
 });
 
 test('uses a compact mobile week and scrolls event dots to the day list', async ({
@@ -730,8 +732,9 @@ test('scrolls a long event list without stretching empty calendar weeks', async 
   await page.goto('/');
   await page.getByRole('button', { name: 'Xem tất cả ngày' }).click();
   await expect(page.locator('.event-list .event-card')).toHaveCount(
-    events.length,
+    events.length + 1,
   );
+  await expect(page.locator('.event-list')).toContainText('Giỗ Nguyễn Văn An');
 
   const dimensions = await page
     .locator('.calendar-layout')
