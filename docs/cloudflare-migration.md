@@ -100,7 +100,9 @@ Validate the new `https://dovan.<your-subdomain>.workers.dev` URL before routing
 
 Use one automatic path to avoid competing deployments. Do not put application passwords or the Neon connection URL in frontend build variables. Keep Cloudflare authentication tokens out of the repository.
 
-The repository's existing dependency audit currently reports 20 advisories (10 moderate, 9 high, 1 critical), also present on the unchanged source branch as of November 18, 2026. The critical advisory affects `react-server-dom-webpack@19.2.8`. The CI and GitHub deployment audit gates will fail until a separate dependency update resolves these findings. This migration does not disable those gates or upgrade the frontend framework.
+CI and GitHub deployment audit all dependencies with `npm audit --audit-level=high`. React 19.2.9 and compatible framework/tool updates resolve the critical and patched high-severity findings. The private [Picomatch compatibility package](../compat/picomatch/README.md) supplies a tested parser safeguard for the remaining matcher issue, which has no patched upstream npm release. The audit gate stays enabled without advisory exceptions. Eight moderate transitive findings remain in the image-generation and component-generator tools; they do not fail the existing high-severity gate.
+
+Vinext's static prerender bundle externalizes `ipaddr.js`, so this existing framework dependency is pinned at the project root for reliable clean builds.
 
 ## 7. Cut over and retain rollback
 

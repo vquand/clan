@@ -1,0 +1,11 @@
+{
+  "name": "@clan/picomatch-compat",
+  "version": "4.0.8",
+  "private": true,
+  "description": "Picomatch 4.0.7 with a local repeated-wildcard extglob security patch",
+  "main": "index.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=12"
+  }
+}
