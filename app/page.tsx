@@ -5,9 +5,7 @@ import { getClanDisplayName } from '@/lib/site-config';
 export const dynamic = 'force-static';
 
 export default function Home() {
-  const remoteDataEnabled = Boolean(
-    process.env.API_URL?.trim() || process.env.NEXT_PUBLIC_API_URL?.trim(),
-  );
+  const remoteDataEnabled = process.env.CLAN_DEMO !== 'true';
   const clanDisplayName = getClanDisplayName();
   return (
     <ClanDataLoader

@@ -45,6 +45,9 @@ yarn-error.log*
 # local environment (never commit secrets)
 .env
 .env.*
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
 !.env.example
 !.env.*.example
 
