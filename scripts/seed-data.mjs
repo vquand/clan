@@ -77,6 +77,8 @@ export function normalizeSeedData(data, generateId) {
     age_group: member.ageGroup,
     avatar_style: member.avatarStyle ?? 'default',
     avatar_image_url: member.avatarImageUrl,
+    is_clan_head: member.isClanHead ?? false,
+    is_previous_clan_head: member.isPreviousClanHead ?? false,
     death_anniversary_lunar_day: member.deathAnniversaryLunar?.day,
     death_anniversary_lunar_month: member.deathAnniversaryLunar?.month,
     hometown: member.hometown,

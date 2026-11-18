@@ -7,7 +7,6 @@ import {
   getClanApiEndpoint,
   loginGuest,
 } from '../lib/clan-api.ts';
-import { buildVercelConfig } from '../lib/vercel-config.mjs';
 import { getClanDisplayName } from '../lib/site-config.ts';
 
 void test('reads and trims the optional clan display name', () => {
@@ -96,23 +95,5 @@ void test('submits only the shared password when unlocking guest access', async 
   assert.equal(
     request?.init?.body,
     JSON.stringify({ password: 'family-password' }),
-  );
-});
-
-void test('proxies the browser API route through the configured Vercel origin', () => {
-  const config = buildVercelConfig('https://clan-be.onrender.com/');
-
-  assert.deepEqual(config.rewrites, [
-    {
-      source: '/api/:path*',
-      destination: 'https://clan-be.onrender.com/api/:path*',
-    },
-  ]);
-});
-
-void test('rejects an insecure Vercel API origin', () => {
-  assert.throws(
-    () => buildVercelConfig('http://clan-be.onrender.com'),
-    /https/i,
   );
 });

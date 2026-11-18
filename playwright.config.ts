@@ -11,7 +11,6 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev -- --port 4173',
     env: {
-      API_URL: 'https://api.example.invalid',
       CLAN_DISPLAY_NAME: 'Đỗ Văn',
     },
     url: 'http://localhost:4173',

@@ -1,13 +1,9 @@
 import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  const apiUrl = env.API_URL || env.NEXT_PUBLIC_API_URL;
-  const apiOrigin = apiUrl ? new URL(apiUrl).origin : undefined;
-  const isCodexSeatbeltSandbox =
-    process.env.CODEX_SANDBOX === 'seatbelt';
+export default defineConfig(() => {
+  const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === 'seatbelt';
 
   return {
     css: { postcss: { plugins: [tailwindcss()] } },
@@ -15,17 +11,9 @@ export default defineConfig(({ mode }) => {
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),
-      ...(apiOrigin
-        ? {
-            proxy: {
-              '/api': {
-                target: apiOrigin,
-                changeOrigin: true,
-                secure: apiOrigin.startsWith('https://'),
-              },
-            },
-          }
-        : {}),
+      proxy: {
+        '/api': { target: 'http://127.0.0.1:8787' },
+      },
     },
     plugins: [vinext()],
   };
